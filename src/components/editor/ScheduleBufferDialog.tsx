@@ -158,16 +158,19 @@ export const ScheduleBufferDialog = ({
     return d.toISOString();
   }, [date, time]);
 
-  const blobToBase64 = (blob: Blob) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(",")[1] ?? "");
-      };
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
+  // Converte Blob -> base64 puro usando ArrayBuffer (evita problemas de
+  // data URLs com vírgulas extras no header, ex.: codecs="mp4a.40.2").
+  const blobToBase64 = async (blob: Blob): Promise<string> => {
+    const buf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    // Processa em chunks para não estourar o stack do String.fromCharCode
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  };
 
   const handleSubmit = async () => {
     if (!effectiveVideo) return toast.error("Renderize ou selecione um vídeo MP4");
