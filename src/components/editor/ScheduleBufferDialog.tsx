@@ -32,6 +32,20 @@ type Channel = {
   organizationName?: string;
 };
 
+type InstagramType = "post" | "reel" | "story";
+type FacebookType = "post" | "reel" | "story";
+type TikTokPrivacy = "PUBLIC_TO_EVERYONE" | "MUTUAL_FOLLOW_FRIENDS" | "SELF_ONLY";
+
+interface ChannelOpts {
+  instagramType?: InstagramType;
+  facebookType?: FacebookType;
+  facebookTitle?: string;
+  tiktokPrivacy?: TikTokPrivacy;
+  tiktokDisableComments?: boolean;
+  tiktokDisableDuet?: boolean;
+  tiktokDisableStitch?: boolean;
+}
+
 const SUPPORTED_SERVICES = ["instagram", "facebook", "tiktok"];
 
 const serviceIcon = (service: string) => {
