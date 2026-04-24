@@ -73,10 +73,15 @@ export const ScheduleBufferDialog = () => {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string>("10:00");
   const [submitting, setSubmitting] = useState(false);
+  const [opts, setOpts] = useState<Record<string, ChannelOpts>>({});
 
   useEffect(() => {
     if (open && generatedCopy && !text) setText(generatedCopy);
   }, [open, generatedCopy, text]);
+
+  const updateOpt = <K extends keyof ChannelOpts>(channelId: string, key: K, value: ChannelOpts[K]) => {
+    setOpts((prev) => ({ ...prev, [channelId]: { ...prev[channelId], [key]: value } }));
+  };
 
   const loadChannels = async () => {
     setLoadingChannels(true);
