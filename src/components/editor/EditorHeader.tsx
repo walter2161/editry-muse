@@ -1,4 +1,4 @@
-import { Video, Save, FolderOpen, Plus, Home } from "lucide-react";
+import { Video, Save, FolderOpen, Plus, Home, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEditorStore } from "@/store/editorStore";
