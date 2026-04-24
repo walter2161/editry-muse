@@ -19,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<PropertyPostGenerator />} />
           <Route path="/editor" element={<VideoEditor />} />
+          <Route path="/settings/buffer" element={<BufferSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
