@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { usePropertyStore } from "@/store/propertyStore";
+import { useRenderedVideoStore } from "@/store/renderedVideoStore";
 import { toast } from "sonner";
 
 type Channel = {
@@ -63,9 +64,25 @@ const serviceIcon = (service: string) => {
   return null;
 };
 
-export const ScheduleBufferDialog = () => {
+interface ScheduleBufferDialogProps {
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}
+
+export const ScheduleBufferDialog = ({
+  controlledOpen,
+  onControlledOpenChange,
+  hideTrigger,
+}: ScheduleBufferDialogProps = {}) => {
   const { generatedCopy } = usePropertyStore();
-  const [open, setOpen] = useState(false);
+  const renderedBlob = useRenderedVideoStore((s) => s.blob);
+  const renderedFilename = useRenderedVideoStore((s) => s.filename);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    onControlledOpenChange ? onControlledOpenChange(v) : setInternalOpen(v);
+  };
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -75,6 +92,14 @@ export const ScheduleBufferDialog = () => {
   const [time, setTime] = useState<string>("10:00");
   const [submitting, setSubmitting] = useState(false);
   const [opts, setOpts] = useState<Record<string, ChannelOpts>>({});
+
+  // Usa o blob renderizado em memória como fonte preferida
+  const effectiveVideo: { name: string; size: number; blob: Blob } | null =
+    videoFile
+      ? { name: videoFile.name, size: videoFile.size, blob: videoFile }
+      : renderedBlob && renderedFilename
+      ? { name: renderedFilename, size: renderedBlob.size, blob: renderedBlob }
+      : null;
 
   useEffect(() => {
     if (open && generatedCopy && !text) setText(generatedCopy);
