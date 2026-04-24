@@ -17,8 +17,8 @@ const QUERY = `
           id
           name
           service
-          serviceUsername
           avatar
+          timezone
         }
       }
     }

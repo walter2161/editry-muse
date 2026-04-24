@@ -1,4 +1,4 @@
-import { Video, Save, FolderOpen, Plus, Home } from "lucide-react";
+import { Video, Save, FolderOpen, Plus, Home, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEditorStore } from "@/store/editorStore";
@@ -144,6 +144,15 @@ export const EditorHeader = () => {
         <ExportVideoDialog />
 
         <ScheduleBufferDialog />
+
+        <Button
+          onClick={() => navigate('/settings/buffer')}
+          variant="ghost"
+          size="sm"
+          title="Configurações do Buffer"
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
       </div>
     </header>
   );

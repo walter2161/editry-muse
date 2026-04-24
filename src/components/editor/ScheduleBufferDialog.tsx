@@ -73,6 +73,14 @@ export const ScheduleBufferDialog = () => {
         SUPPORTED_SERVICES.includes(c.service?.toLowerCase()),
       );
       setChannels(list);
+      // Pre-select default channels saved in settings page
+      try {
+        const saved = JSON.parse(localStorage.getItem("buffer_default_channels") || "[]") as string[];
+        if (saved.length) {
+          const valid = saved.filter((id) => list.some((c) => c.id === id));
+          if (valid.length) setSelected(new Set(valid));
+        }
+      } catch {/* noop */}
       if (list.length === 0) {
         toast.info("Nenhum canal Instagram/Facebook/TikTok encontrado na sua conta Buffer.");
       }

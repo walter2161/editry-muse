@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PropertyPostGenerator from "./pages/PropertyPostGenerator";
 import VideoEditor from "./pages/VideoEditor";
+import BufferSettings from "./pages/BufferSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<PropertyPostGenerator />} />
           <Route path="/editor" element={<VideoEditor />} />
+          <Route path="/settings/buffer" element={<BufferSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
