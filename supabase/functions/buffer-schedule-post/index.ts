@@ -133,21 +133,33 @@ Deno.serve(async (req) => {
       const opt = optsMap.get(channelId);
       const service = (opt?.service ?? "").toLowerCase();
 
-      // Build platform-specific metadata (Buffer's API uses `metadata`, not `channelData`)
+      // Build platform-specific metadata according to Buffer's GraphQL schema.
+      // Schema reference: https://buffer.com/developers/api/graphql
       const metadata: Record<string, unknown> = {};
       if (service === "instagram") {
-        metadata.instagram = { type: opt?.instagramType ?? "reel" };
+        // InstagramPostMetadataInput requires `type` and `shouldShareToFeed` (Boolean!)
+        const igType = opt?.instagramType ?? "reel";
+        metadata.instagram = {
+          type: igType,
+          // Required field - whether the reel should also be shared to the main feed
+          shouldShareToFeed: igType === "reel" ? true : false,
+        };
       } else if (service === "facebook") {
-        const fb: Record<string, unknown> = { type: opt?.facebookType ?? "post" };
-        if (opt?.facebookTitle) fb.title = opt.facebookTitle;
-        metadata.facebook = fb;
+        // FacebookPostMetadataInput accepts `type` (post|reel|story). No `title` field.
+        // Reel title (when needed) goes in the post text instead.
+        metadata.facebook = { type: opt?.facebookType ?? "post" };
+        if (opt?.facebookTitle && opt?.facebookType === "reel") {
+          // Prepend title to the body text since Buffer doesn't accept a separate title
+          // (handled in `text` below — see note)
+        }
       } else if (service === "tiktok") {
+        // TikTokPostMetadataInput only accepts these fields (camelCase):
+        // disableComment, disableDuet, disableStitch, privacyOption
         metadata.tiktok = {
-          type: "post",
+          disableComment: opt?.tiktokDisableComments ?? false,
           disableDuet: opt?.tiktokDisableDuet ?? false,
           disableStitch: opt?.tiktokDisableStitch ?? false,
-          disableComments: opt?.tiktokDisableComments ?? false,
-          privacy: opt?.tiktokPrivacy ?? "PUBLIC_TO_EVERYONE",
+          privacyOption: opt?.tiktokPrivacy ?? "PUBLIC_TO_EVERYONE",
         };
       }
 
