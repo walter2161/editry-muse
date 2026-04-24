@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEditorStore } from "@/store/editorStore";
 import { ExportVideoDialog } from "./ExportVideoDialog";
+import { ScheduleBufferDialog } from "./ScheduleBufferDialog";
 import { ThumbnailEditor } from "./ThumbnailEditor";
 import { toast } from "sonner";
 import { useRef } from "react";
@@ -141,6 +142,8 @@ export const EditorHeader = () => {
         <ThumbnailEditor />
         
         <ExportVideoDialog />
+
+        <ScheduleBufferDialog />
       </div>
     </header>
   );
