@@ -158,7 +158,7 @@ export const ScheduleBufferDialog = ({
     return d.toISOString();
   }, [date, time]);
 
-  const fileToBase64 = (file: File) =>
+  const blobToBase64 = (blob: Blob) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -166,25 +166,25 @@ export const ScheduleBufferDialog = ({
         resolve(result.split(",")[1] ?? "");
       };
       reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(blob);
     });
 
   const handleSubmit = async () => {
-    if (!videoFile) return toast.error("Selecione o vídeo renderizado (MP4)");
+    if (!effectiveVideo) return toast.error("Renderize ou selecione um vídeo MP4");
     if (selected.size === 0) return toast.error("Selecione ao menos um canal");
     if (!text.trim()) return toast.error("O texto do post não pode estar vazio");
     if (!dueAtIso) return toast.error("Escolha data e horário do agendamento");
     if (new Date(dueAtIso).getTime() < Date.now()) {
       return toast.error("A data de agendamento precisa estar no futuro");
     }
-    if (videoFile.size > 50 * 1024 * 1024) {
+    if (effectiveVideo.size > 50 * 1024 * 1024) {
       return toast.error("Vídeo acima de 50MB. Reduza ou comprima antes de enviar.");
     }
 
     setSubmitting(true);
     try {
       toast.message("Enviando vídeo...", { description: "Isso pode levar alguns segundos." });
-      const videoBase64 = await fileToBase64(videoFile);
+      const videoBase64 = await blobToBase64(effectiveVideo.blob);
       const channelIds = Array.from(selected);
       const channelOptions = channelIds.map((id) => {
         const ch = channels.find((c) => c.id === id);
@@ -197,7 +197,7 @@ export const ScheduleBufferDialog = ({
           channelOptions,
           text,
           videoBase64,
-          filename: videoFile.name,
+          filename: effectiveVideo.name,
           dueAt: dueAtIso,
         },
       });
