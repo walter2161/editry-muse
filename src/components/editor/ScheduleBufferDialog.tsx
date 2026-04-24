@@ -160,9 +160,16 @@ export const ScheduleBufferDialog = () => {
     try {
       toast.message("Enviando vídeo...", { description: "Isso pode levar alguns segundos." });
       const videoBase64 = await fileToBase64(videoFile);
+      const channelIds = Array.from(selected);
+      const channelOptions = channelIds.map((id) => {
+        const ch = channels.find((c) => c.id === id);
+        const o = opts[id] ?? {};
+        return { channelId: id, service: ch?.service ?? "", ...o };
+      });
       const { data, error } = await supabase.functions.invoke("buffer-schedule-post", {
         body: {
-          channelIds: Array.from(selected),
+          channelIds,
+          channelOptions,
           text,
           videoBase64,
           filename: videoFile.name,
