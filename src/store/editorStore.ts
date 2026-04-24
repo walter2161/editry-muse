@@ -176,14 +176,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   addClip: (clip) => set((state) => {
     const newClips = [...state.clips, clip].sort((a, b) => a.start - b.start);
-    return { clips: newClips };
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal };
   }),
 
-  updateClip: (id, updates) => set((state) => ({
-    clips: state.clips.map(clip => 
+  updateClip: (id, updates) => set((state) => {
+    const newClips = state.clips.map(clip =>
       clip.id === id ? { ...clip, ...updates } : clip
-    )
-  })),
+    );
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal };
+  }),
 
   removeClip: (id) => set((state) => {
     const newClips = state.clips.filter(clip => clip.id !== id);
