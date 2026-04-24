@@ -969,6 +969,28 @@ export const ExportVideoDialog = () => {
               <Progress value={exportProgress} />
             </div>
           )}
+
+          {!isExporting && renderedBlob && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                ✓ Vídeo renderizado pronto
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {renderedFilename} · {(renderedBlob.size / (1024 * 1024)).toFixed(1)} MB
+              </p>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setIsOpen(false);
+                  setScheduleOpen(true);
+                }}
+              >
+                <CalendarClock className="w-4 h-4 mr-2" />
+                Agendar agora no Buffer
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2">
@@ -977,16 +999,22 @@ export const ExportVideoDialog = () => {
             onClick={() => setIsOpen(false)}
             disabled={isExporting}
           >
-            Cancelar
+            Fechar
           </Button>
           <Button
             onClick={handleExport}
             disabled={isExporting}
           >
-            {isExporting ? "Exportando..." : "Exportar"}
+            {isExporting ? "Exportando..." : renderedBlob ? "Renderizar novamente" : "Exportar"}
           </Button>
         </div>
       </DialogContent>
+      {/* Dialog de agendamento controlado, sem trigger próprio */}
+      <ScheduleBufferDialog
+        controlledOpen={scheduleOpen}
+        onControlledOpenChange={setScheduleOpen}
+        hideTrigger
+      />
     </Dialog>
   );
 };
