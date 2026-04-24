@@ -176,14 +176,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   addClip: (clip) => set((state) => {
     const newClips = [...state.clips, clip].sort((a, b) => a.start - b.start);
-    return { clips: newClips };
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal };
   }),
 
-  updateClip: (id, updates) => set((state) => ({
-    clips: state.clips.map(clip => 
+  updateClip: (id, updates) => set((state) => {
+    const newClips = state.clips.map(clip =>
       clip.id === id ? { ...clip, ...updates } : clip
-    )
-  })),
+    );
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal };
+  }),
 
   removeClip: (id) => set((state) => {
     const newClips = state.clips.filter(clip => clip.id !== id);
@@ -206,7 +209,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       start: clipToDuplicate.start + clipToDuplicate.duration
     };
     
-    return { clips: [...state.clips, newClip].sort((a, b) => a.start - b.start) };
+    const newClips = [...state.clips, newClip].sort((a, b) => a.start - b.start);
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal };
   }),
 
   splitClip: (id, splitTime) => set((state) => {
@@ -238,7 +243,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       .concat([firstPart, secondPart])
       .sort((a, b) => a.start - b.start);
     
-    return { clips: newClips, selectedClipIds: [] };
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal, selectedClipIds: [] };
   }),
 
   selectClip: (id, multiSelect = false) => set((state) => {

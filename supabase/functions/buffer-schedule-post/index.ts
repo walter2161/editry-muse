@@ -133,16 +133,17 @@ Deno.serve(async (req) => {
       const opt = optsMap.get(channelId);
       const service = (opt?.service ?? "").toLowerCase();
 
-      // Build platform-specific channelData
-      const channelData: Record<string, unknown> = {};
+      // Build platform-specific metadata (Buffer's API uses `metadata`, not `channelData`)
+      const metadata: Record<string, unknown> = {};
       if (service === "instagram") {
-        channelData.instagram = { type: opt?.instagramType ?? "reel" };
+        metadata.instagram = { type: opt?.instagramType ?? "reel" };
       } else if (service === "facebook") {
         const fb: Record<string, unknown> = { type: opt?.facebookType ?? "post" };
         if (opt?.facebookTitle) fb.title = opt.facebookTitle;
-        channelData.facebook = fb;
+        metadata.facebook = fb;
       } else if (service === "tiktok") {
-        channelData.tiktok = {
+        metadata.tiktok = {
+          type: "post",
           disableDuet: opt?.tiktokDisableDuet ?? false,
           disableStitch: opt?.tiktokDisableStitch ?? false,
           disableComments: opt?.tiktokDisableComments ?? false,
@@ -153,19 +154,22 @@ Deno.serve(async (req) => {
       const input: Record<string, unknown> = {
         text: body.text,
         channelId,
+        // schedulingType=automatic means Buffer auto-publishes (vs notification)
+        schedulingType: "automatic",
         assets: {
           videos: [
             { url: videoUrl, ...(body.thumbnailUrl ? { thumbnailUrl: body.thumbnailUrl } : {}) },
           ],
         },
       };
-      if (Object.keys(channelData).length > 0) input.channelData = channelData;
+      if (Object.keys(metadata).length > 0) input.metadata = metadata;
 
+      // ShareMode: customScheduled (with dueAt) or addToQueue
       if (body.dueAt) {
-        input.schedulingType = "customScheduled";
+        input.mode = "customScheduled";
         input.dueAt = body.dueAt;
       } else {
-        input.schedulingType = "addToQueue";
+        input.mode = "addToQueue";
       }
 
       const res = await fetch(`${BUFFER_API}/graphql`, {
@@ -178,7 +182,7 @@ Deno.serve(async (req) => {
       });
       const data = await res.json();
       const payload = data?.data?.createPost;
-      const ok = res.ok && payload && !payload.message;
+      const ok = res.ok && payload && !payload.message && !data?.errors;
       if (!ok) console.error("Buffer post error", channelId, JSON.stringify(data));
       results.push({ channelId, ok, result: payload ?? data });
     }
