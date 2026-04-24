@@ -1,1 +1,7 @@
 project_id = "fuqzhtpirndhbgapfvwp"
+
+[functions.buffer-channels]
+verify_jwt = false
+
+[functions.buffer-schedule-post]
+verify_jwt = false
