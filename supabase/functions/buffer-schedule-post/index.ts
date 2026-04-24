@@ -124,27 +124,51 @@ Deno.serve(async (req) => {
       videoUrl = pub.publicUrl;
     }
 
+    const optsMap = new Map<string, ChannelOption>();
+    for (const o of body.channelOptions ?? []) optsMap.set(o.channelId, o);
+
     const results: Array<{ channelId: string; ok: boolean; result: unknown }> = [];
 
     for (const channelId of body.channelIds) {
+      const opt = optsMap.get(channelId);
+      const service = (opt?.service ?? "").toLowerCase();
+
+      // Build platform-specific channelData
+      const channelData: Record<string, unknown> = {};
+      if (service === "instagram") {
+        channelData.instagram = { type: opt?.instagramType ?? "reel" };
+      } else if (service === "facebook") {
+        const fb: Record<string, unknown> = { type: opt?.facebookType ?? "post" };
+        if (opt?.facebookTitle) fb.title = opt.facebookTitle;
+        channelData.facebook = fb;
+      } else if (service === "tiktok") {
+        channelData.tiktok = {
+          disableDuet: opt?.tiktokDisableDuet ?? false,
+          disableStitch: opt?.tiktokDisableStitch ?? false,
+          disableComments: opt?.tiktokDisableComments ?? false,
+          privacy: opt?.tiktokPrivacy ?? "PUBLIC_TO_EVERYONE",
+        };
+      }
+
       const input: Record<string, unknown> = {
         text: body.text,
         channelId,
-        schedulingType: "automatic",
         assets: {
           videos: [
             { url: videoUrl, ...(body.thumbnailUrl ? { thumbnailUrl: body.thumbnailUrl } : {}) },
           ],
         },
       };
+      if (Object.keys(channelData).length > 0) input.channelData = channelData;
+
       if (body.dueAt) {
-        input.mode = "customScheduled";
+        input.schedulingType = "customScheduled";
         input.dueAt = body.dueAt;
       } else {
-        input.mode = "addToQueue";
+        input.schedulingType = "addToQueue";
       }
 
-      const res = await fetch(BUFFER_API, {
+      const res = await fetch(`${BUFFER_API}/graphql`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
