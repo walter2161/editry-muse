@@ -144,6 +144,15 @@ export const EditorHeader = () => {
         <ExportVideoDialog />
 
         <ScheduleBufferDialog />
+
+        <Button
+          onClick={() => navigate('/settings/buffer')}
+          variant="ghost"
+          size="sm"
+          title="Configurações do Buffer"
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
       </div>
     </header>
   );
