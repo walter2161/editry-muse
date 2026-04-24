@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PropertyPostGenerator from "./pages/PropertyPostGenerator";
 import VideoEditor from "./pages/VideoEditor";
+import BufferSettings from "./pages/BufferSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
