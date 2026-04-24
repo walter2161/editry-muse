@@ -226,12 +226,14 @@ export const ScheduleBufferDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" size="sm" title="Agendar no Buffer">
-          <CalendarClock className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">Agendar</span>
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="default" size="sm" title="Agendar no Buffer">
+            <CalendarClock className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Agendar</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agendar no Instagram, TikTok e Facebook</DialogTitle>
@@ -243,7 +245,15 @@ export const ScheduleBufferDialog = ({
         <div className="space-y-5">
           {/* Vídeo */}
           <div className="space-y-2">
-            <Label htmlFor="buffer-video">Vídeo renderizado (MP4)</Label>
+            <Label htmlFor="buffer-video">Vídeo (MP4)</Label>
+            {renderedBlob && !videoFile && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs">
+                <span className="font-medium text-foreground">✓ Usando vídeo renderizado:</span>{" "}
+                <span className="text-muted-foreground">
+                  {renderedFilename} · {(renderedBlob.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+              </div>
+            )}
             <Input
               id="buffer-video"
               type="file"
@@ -256,7 +266,9 @@ export const ScheduleBufferDialog = ({
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Dica: exporte o vídeo primeiro com o botão "Exportar" e selecione o arquivo aqui.
+              {renderedBlob
+                ? "O vídeo recém-renderizado será enviado automaticamente. Selecione um arquivo apenas se quiser sobrescrever."
+                : 'Dica: exporte o vídeo primeiro com o botão "Exportar" — ele será enviado automaticamente.'}
             </p>
           </div>
 
