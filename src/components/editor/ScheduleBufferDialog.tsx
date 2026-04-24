@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { usePropertyStore } from "@/store/propertyStore";
+import { useRenderedVideoStore } from "@/store/renderedVideoStore";
 import { toast } from "sonner";
 
 type Channel = {
@@ -63,9 +64,25 @@ const serviceIcon = (service: string) => {
   return null;
 };
 
-export const ScheduleBufferDialog = () => {
+interface ScheduleBufferDialogProps {
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}
+
+export const ScheduleBufferDialog = ({
+  controlledOpen,
+  onControlledOpenChange,
+  hideTrigger,
+}: ScheduleBufferDialogProps = {}) => {
   const { generatedCopy } = usePropertyStore();
-  const [open, setOpen] = useState(false);
+  const renderedBlob = useRenderedVideoStore((s) => s.blob);
+  const renderedFilename = useRenderedVideoStore((s) => s.filename);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    onControlledOpenChange ? onControlledOpenChange(v) : setInternalOpen(v);
+  };
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -75,6 +92,14 @@ export const ScheduleBufferDialog = () => {
   const [time, setTime] = useState<string>("10:00");
   const [submitting, setSubmitting] = useState(false);
   const [opts, setOpts] = useState<Record<string, ChannelOpts>>({});
+
+  // Usa o blob renderizado em memória como fonte preferida
+  const effectiveVideo: { name: string; size: number; blob: Blob } | null =
+    videoFile
+      ? { name: videoFile.name, size: videoFile.size, blob: videoFile }
+      : renderedBlob && renderedFilename
+      ? { name: renderedFilename, size: renderedBlob.size, blob: renderedBlob }
+      : null;
 
   useEffect(() => {
     if (open && generatedCopy && !text) setText(generatedCopy);
@@ -133,7 +158,7 @@ export const ScheduleBufferDialog = () => {
     return d.toISOString();
   }, [date, time]);
 
-  const fileToBase64 = (file: File) =>
+  const blobToBase64 = (blob: Blob) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -141,25 +166,25 @@ export const ScheduleBufferDialog = () => {
         resolve(result.split(",")[1] ?? "");
       };
       reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(blob);
     });
 
   const handleSubmit = async () => {
-    if (!videoFile) return toast.error("Selecione o vídeo renderizado (MP4)");
+    if (!effectiveVideo) return toast.error("Renderize ou selecione um vídeo MP4");
     if (selected.size === 0) return toast.error("Selecione ao menos um canal");
     if (!text.trim()) return toast.error("O texto do post não pode estar vazio");
     if (!dueAtIso) return toast.error("Escolha data e horário do agendamento");
     if (new Date(dueAtIso).getTime() < Date.now()) {
       return toast.error("A data de agendamento precisa estar no futuro");
     }
-    if (videoFile.size > 50 * 1024 * 1024) {
+    if (effectiveVideo.size > 50 * 1024 * 1024) {
       return toast.error("Vídeo acima de 50MB. Reduza ou comprima antes de enviar.");
     }
 
     setSubmitting(true);
     try {
       toast.message("Enviando vídeo...", { description: "Isso pode levar alguns segundos." });
-      const videoBase64 = await fileToBase64(videoFile);
+      const videoBase64 = await blobToBase64(effectiveVideo.blob);
       const channelIds = Array.from(selected);
       const channelOptions = channelIds.map((id) => {
         const ch = channels.find((c) => c.id === id);
@@ -172,7 +197,7 @@ export const ScheduleBufferDialog = () => {
           channelOptions,
           text,
           videoBase64,
-          filename: videoFile.name,
+          filename: effectiveVideo.name,
           dueAt: dueAtIso,
         },
       });
@@ -201,12 +226,14 @@ export const ScheduleBufferDialog = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" size="sm" title="Agendar no Buffer">
-          <CalendarClock className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">Agendar</span>
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="default" size="sm" title="Agendar no Buffer">
+            <CalendarClock className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Agendar</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agendar no Instagram, TikTok e Facebook</DialogTitle>
@@ -218,7 +245,15 @@ export const ScheduleBufferDialog = () => {
         <div className="space-y-5">
           {/* Vídeo */}
           <div className="space-y-2">
-            <Label htmlFor="buffer-video">Vídeo renderizado (MP4)</Label>
+            <Label htmlFor="buffer-video">Vídeo (MP4)</Label>
+            {renderedBlob && !videoFile && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs">
+                <span className="font-medium text-foreground">✓ Usando vídeo renderizado:</span>{" "}
+                <span className="text-muted-foreground">
+                  {renderedFilename} · {(renderedBlob.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+              </div>
+            )}
             <Input
               id="buffer-video"
               type="file"
@@ -231,7 +266,9 @@ export const ScheduleBufferDialog = () => {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Dica: exporte o vídeo primeiro com o botão "Exportar" e selecione o arquivo aqui.
+              {renderedBlob
+                ? "O vídeo recém-renderizado será enviado automaticamente. Selecione um arquivo apenas se quiser sobrescrever."
+                : 'Dica: exporte o vídeo primeiro com o botão "Exportar" — ele será enviado automaticamente.'}
             </p>
           </div>
 

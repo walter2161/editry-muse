@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import { Download, Video } from "lucide-react";
+import { Download, Video, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,13 +13,19 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useEditorStore } from "@/store/editorStore";
+import { useRenderedVideoStore } from "@/store/renderedVideoStore";
+import { ScheduleBufferDialog } from "./ScheduleBufferDialog";
 import { toast } from "sonner";
 
 export const ExportVideoDialog = () => {
   const { clips, mediaItems, globalSettings, totalDuration, projectName, setCurrentTime, setIsPlaying, isPlaying, currentTime, trackStates, thumbnailData } = useEditorStore();
+  const setRendered = useRenderedVideoStore((s) => s.setRendered);
+  const renderedBlob = useRenderedVideoStore((s) => s.blob);
+  const renderedFilename = useRenderedVideoStore((s) => s.filename);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const hasClips = clips.length > 0;
 
@@ -704,16 +710,17 @@ export const ExportVideoDialog = () => {
 
             // Se o navegador suportar MP4 nativamente, baixar direto
             if (mimeType.includes('mp4')) {
+              const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
+              a.download = filename;
               a.click();
               URL.revokeObjectURL(url);
+              setRendered(blob, filename);
               toast.success("Vídeo exportado em MP4 com sucesso!");
               setIsExporting(false);
               setExportProgress(100);
-              setTimeout(() => setIsOpen(false), 1500);
               resolve();
               return;
             }
@@ -762,17 +769,18 @@ export const ExportVideoDialog = () => {
 
             const data = await ffmpeg.readFile(outputName);
             const mp4Blob = new Blob([new Uint8Array(data as any)], { type: 'video/mp4' });
+            const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
             const url = URL.createObjectURL(mp4Blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
+            a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
+            setRendered(mp4Blob, filename);
 
             toast.success("Vídeo exportado em MP4 com sucesso!");
             setIsExporting(false);
             setExportProgress(100);
-            setTimeout(() => setIsOpen(false), 1500);
             resolve();
           } catch (err) {
             console.error('Falha na conversão para MP4, baixando WEBM como fallback', err);
@@ -961,6 +969,28 @@ export const ExportVideoDialog = () => {
               <Progress value={exportProgress} />
             </div>
           )}
+
+          {!isExporting && renderedBlob && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                ✓ Vídeo renderizado pronto
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {renderedFilename} · {(renderedBlob.size / (1024 * 1024)).toFixed(1)} MB
+              </p>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setIsOpen(false);
+                  setScheduleOpen(true);
+                }}
+              >
+                <CalendarClock className="w-4 h-4 mr-2" />
+                Agendar agora no Buffer
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2">
@@ -969,16 +999,22 @@ export const ExportVideoDialog = () => {
             onClick={() => setIsOpen(false)}
             disabled={isExporting}
           >
-            Cancelar
+            Fechar
           </Button>
           <Button
             onClick={handleExport}
             disabled={isExporting}
           >
-            {isExporting ? "Exportando..." : "Exportar"}
+            {isExporting ? "Exportando..." : renderedBlob ? "Renderizar novamente" : "Exportar"}
           </Button>
         </div>
       </DialogContent>
+      {/* Dialog de agendamento controlado, sem trigger próprio */}
+      <ScheduleBufferDialog
+        controlledOpen={scheduleOpen}
+        onControlledOpenChange={setScheduleOpen}
+        hideTrigger
+      />
     </Dialog>
   );
 };
