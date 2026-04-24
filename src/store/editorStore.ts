@@ -209,7 +209,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       start: clipToDuplicate.start + clipToDuplicate.duration
     };
     
-    return { clips: [...state.clips, newClip].sort((a, b) => a.start - b.start) };
+    const newClips = [...state.clips, newClip].sort((a, b) => a.start - b.start);
+    const newTotal = newClips.reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+    return { clips: newClips, totalDuration: newTotal };
   }),
 
   splitClip: (id, splitTime) => set((state) => {
