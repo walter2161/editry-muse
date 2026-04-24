@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import { Download, Video } from "lucide-react";
+import { Download, Video, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,13 +13,19 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useEditorStore } from "@/store/editorStore";
+import { useRenderedVideoStore } from "@/store/renderedVideoStore";
+import { ScheduleBufferDialog } from "./ScheduleBufferDialog";
 import { toast } from "sonner";
 
 export const ExportVideoDialog = () => {
   const { clips, mediaItems, globalSettings, totalDuration, projectName, setCurrentTime, setIsPlaying, isPlaying, currentTime, trackStates, thumbnailData } = useEditorStore();
+  const setRendered = useRenderedVideoStore((s) => s.setRendered);
+  const renderedBlob = useRenderedVideoStore((s) => s.blob);
+  const renderedFilename = useRenderedVideoStore((s) => s.filename);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const hasClips = clips.length > 0;
 
