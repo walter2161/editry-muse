@@ -12,9 +12,28 @@ const corsHeaders = {
 const BUFFER_API = "https://api.buffer.com";
 const BUCKET = "rendered-videos";
 
+type InstagramType = "post" | "reel" | "story";
+
+interface ChannelOption {
+  channelId: string;
+  service: string; // instagram | facebook | tiktok
+  // Instagram
+  instagramType?: InstagramType;
+  // Facebook
+  facebookTitle?: string;
+  facebookType?: "post" | "reel" | "story";
+  // TikTok
+  tiktokDisableDuet?: boolean;
+  tiktokDisableStitch?: boolean;
+  tiktokDisableComments?: boolean;
+  tiktokPrivacy?: "PUBLIC_TO_EVERYONE" | "MUTUAL_FOLLOW_FRIENDS" | "SELF_ONLY";
+}
+
 interface ReqBody {
   channelIds: string[];
   text: string;
+  // Per-channel options (Instagram type, Facebook title, etc)
+  channelOptions?: ChannelOption[];
   // Either provide videoBase64 + filename, OR a public videoUrl
   videoBase64?: string;
   filename?: string;
