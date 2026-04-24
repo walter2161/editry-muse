@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { usePropertyStore } from "@/store/propertyStore";
@@ -31,6 +32,20 @@ type Channel = {
   avatar?: string;
   organizationName?: string;
 };
+
+type InstagramType = "post" | "reel" | "story";
+type FacebookType = "post" | "reel" | "story";
+type TikTokPrivacy = "PUBLIC_TO_EVERYONE" | "MUTUAL_FOLLOW_FRIENDS" | "SELF_ONLY";
+
+interface ChannelOpts {
+  instagramType?: InstagramType;
+  facebookType?: FacebookType;
+  facebookTitle?: string;
+  tiktokPrivacy?: TikTokPrivacy;
+  tiktokDisableComments?: boolean;
+  tiktokDisableDuet?: boolean;
+  tiktokDisableStitch?: boolean;
+}
 
 const SUPPORTED_SERVICES = ["instagram", "facebook", "tiktok"];
 
@@ -59,10 +74,15 @@ export const ScheduleBufferDialog = () => {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string>("10:00");
   const [submitting, setSubmitting] = useState(false);
+  const [opts, setOpts] = useState<Record<string, ChannelOpts>>({});
 
   useEffect(() => {
     if (open && generatedCopy && !text) setText(generatedCopy);
   }, [open, generatedCopy, text]);
+
+  const updateOpt = <K extends keyof ChannelOpts>(channelId: string, key: K, value: ChannelOpts[K]) => {
+    setOpts((prev) => ({ ...prev, [channelId]: { ...prev[channelId], [key]: value } }));
+  };
 
   const loadChannels = async () => {
     setLoadingChannels(true);
@@ -140,9 +160,16 @@ export const ScheduleBufferDialog = () => {
     try {
       toast.message("Enviando vídeo...", { description: "Isso pode levar alguns segundos." });
       const videoBase64 = await fileToBase64(videoFile);
+      const channelIds = Array.from(selected);
+      const channelOptions = channelIds.map((id) => {
+        const ch = channels.find((c) => c.id === id);
+        const o = opts[id] ?? {};
+        return { channelId: id, service: ch?.service ?? "", ...o };
+      });
       const { data, error } = await supabase.functions.invoke("buffer-schedule-post", {
         body: {
-          channelIds: Array.from(selected),
+          channelIds,
+          channelOptions,
           text,
           videoBase64,
           filename: videoFile.name,
@@ -260,27 +287,122 @@ export const ScheduleBufferDialog = () => {
                       Nenhum canal disponível.
                     </p>
                   )}
-                  {channels.map((c) => (
-                    <label
-                      key={c.id}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={selected.has(c.id)}
-                        onCheckedChange={() => toggle(c.id)}
-                      />
-                      {serviceIcon(c.service)}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          {c.name || c.serviceUsername || c.id}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {c.service}
-                          {c.organizationName ? ` · ${c.organizationName}` : ""}
-                        </div>
+                  {channels.map((c) => {
+                    const svc = c.service?.toLowerCase();
+                    const isSelected = selected.has(c.id);
+                    const o = opts[c.id] ?? {};
+                    return (
+                      <div key={c.id} className="rounded border border-border/50">
+                        <label className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggle(c.id)}
+                          />
+                          {serviceIcon(c.service)}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">
+                              {c.name || c.serviceUsername || c.id}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {c.service}
+                              {c.organizationName ? ` · ${c.organizationName}` : ""}
+                            </div>
+                          </div>
+                        </label>
+                        {isSelected && (
+                          <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/40 bg-muted/20">
+                            {svc === "instagram" && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">Tipo de post (Instagram)</Label>
+                                <Select
+                                  value={o.instagramType ?? "reel"}
+                                  onValueChange={(v) => updateOpt(c.id, "instagramType", v as InstagramType)}
+                                >
+                                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="reel">Reel</SelectItem>
+                                    <SelectItem value="post">Post (feed)</SelectItem>
+                                    <SelectItem value="story">Story</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            {svc === "facebook" && (
+                              <>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Tipo (Facebook)</Label>
+                                  <Select
+                                    value={o.facebookType ?? "post"}
+                                    onValueChange={(v) => updateOpt(c.id, "facebookType", v as FacebookType)}
+                                  >
+                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="post">Post</SelectItem>
+                                      <SelectItem value="reel">Reel</SelectItem>
+                                      <SelectItem value="story">Story</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Título (opcional)</Label>
+                                  <Input
+                                    className="h-8"
+                                    value={o.facebookTitle ?? ""}
+                                    onChange={(e) => updateOpt(c.id, "facebookTitle", e.target.value)}
+                                    placeholder="Título do vídeo no Facebook"
+                                  />
+                                </div>
+                              </>
+                            )}
+                            {svc === "tiktok" && (
+                              <>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Privacidade (TikTok)</Label>
+                                  <Select
+                                    value={o.tiktokPrivacy ?? "PUBLIC_TO_EVERYONE"}
+                                    onValueChange={(v) => updateOpt(c.id, "tiktokPrivacy", v as TikTokPrivacy)}
+                                  >
+                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="PUBLIC_TO_EVERYONE">Público</SelectItem>
+                                      <SelectItem value="MUTUAL_FOLLOW_FRIENDS">Amigos</SelectItem>
+                                      <SelectItem value="SELF_ONLY">Apenas eu</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex flex-wrap gap-3 text-xs">
+                                  <label className="flex items-center gap-1.5">
+                                    <Checkbox
+                                      checked={!!o.tiktokDisableComments}
+                                      onCheckedChange={(v) => updateOpt(c.id, "tiktokDisableComments", !!v)}
+                                    />
+                                    Desativar comentários
+                                  </label>
+                                  <label className="flex items-center gap-1.5">
+                                    <Checkbox
+                                      checked={!!o.tiktokDisableDuet}
+                                      onCheckedChange={(v) => updateOpt(c.id, "tiktokDisableDuet", !!v)}
+                                    />
+                                    Desativar Duet
+                                  </label>
+                                  <label className="flex items-center gap-1.5">
+                                    <Checkbox
+                                      checked={!!o.tiktokDisableStitch}
+                                      onCheckedChange={(v) => updateOpt(c.id, "tiktokDisableStitch", !!v)}
+                                    />
+                                    Desativar Stitch
+                                  </label>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                  ⚠️ TikTok exige vídeo com no mínimo 3 segundos.
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
