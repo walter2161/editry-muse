@@ -84,14 +84,13 @@ export const VideoPreview = () => {
     // Sempre atualizar legendas conforme o tempo (mesmo pausado)
     handleSubtitles(adjustedTime);
 
-    // Gerenciar reprodução de áudio
+    // Gerenciar reprodução de áudio (todos os canais simultaneamente)
     if (isPlaying) {
       playAudio(adjustedTime);
     } else {
-      stopAudio();
-      currentAudioClipRef.current = null;
+      stopAllAudio();
     }
-  }, [currentTime, clips, mediaItems, isPlaying]);
+  }, [currentTime, clips, mediaItems, isPlaying, trackStates]);
 
   const playAudio = (time: number) => {
     const audioClips = clips.filter(c => c.type === 'audio');
