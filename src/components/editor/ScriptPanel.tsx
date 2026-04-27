@@ -13,8 +13,10 @@ export const ScriptPanel = () => {
   const [script, setScript] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const { addClip, clips, updateTotalDuration } = useEditorStore();
   const { propertyData } = usePropertyStore();
+  const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
 
   const generateScript = async () => {
     if (!propertyData) {
