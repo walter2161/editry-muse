@@ -529,32 +529,36 @@ export const ExportVideoDialog = () => {
     if (currentSubtitle && currentSubtitle.text) {
       const trackState = trackStates.find(t => t.name === currentSubtitle.track);
       if (!trackState?.hidden) {
-        // Configurar estilo do texto - Montserrat, text-lg, com sombra
-        const fontSize = Math.floor(canvas.height * 0.044); // legenda dobrada (~text-4xl)
-        ctx.font = `600 ${fontSize}px Montserrat, Arial, sans-serif`;
+        const style = currentSubtitle.subtitleStyle || {};
+        // Estilo de referência é em px no canvas 1080x1920; escalamos pela altura
+        const refH = 1920;
+        const scale = canvas.height / refH;
+        const fontSize = Math.floor((style.fontSize ?? 72) * scale);
+        const fontWeight = style.fontWeight ?? 700;
+        const fontFamily = (style.fontFamily || 'Montserrat, Arial, sans-serif').split(',')[0].trim();
+        const italic = style.italic ? 'italic ' : '';
+        ctx.font = `${italic}${fontWeight} ${fontSize}px ${fontFamily}, Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        
-        // Configurar sombra
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 6;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 2;
-      
-        const text = currentSubtitle.text;
+
+        const useShadow = style.shadow !== false;
+        if (useShadow) {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 6;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
+        }
+
+        const rawText = style.uppercase ? currentSubtitle.text.toUpperCase() : currentSubtitle.text;
         const maxWidth = canvas.width * 0.9;
-        const lineHeight = fontSize * 1.5;
-        
-        // Quebrar texto em múltiplas linhas se necessário
-        const words = text.split(' ');
+        const lineHeight = fontSize * 1.3;
+
+        const words = rawText.split(' ');
         const lines: string[] = [];
         let currentLine = '';
-        
         words.forEach(word => {
           const testLine = currentLine ? `${currentLine} ${word}` : word;
-          const metrics = ctx.measureText(testLine);
-          
-          if (metrics.width > maxWidth && currentLine) {
+          if (ctx.measureText(testLine).width > maxWidth && currentLine) {
             lines.push(currentLine);
             currentLine = word;
           } else {
@@ -562,21 +566,45 @@ export const ExportVideoDialog = () => {
           }
         });
         if (currentLine) lines.push(currentLine);
-        
-        // Desenhar texto branco com sombra (sem fundo)
-        ctx.fillStyle = '#FFFFFF';
-        
-        // Calcular posição: 100px do rodapé
-        const subtitleBottomMargin = 220;
+
+        const subtitleBottomMargin = (style.bottomOffset ?? 220) * scale;
         const totalHeight = lines.length * lineHeight;
         const startY = canvas.height - subtitleBottomMargin - totalHeight + lineHeight;
-        
+
+        // Fundo opcional
+        if (style.bgColor) {
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          const padX = fontSize * 0.5;
+          const padY = fontSize * 0.2;
+          ctx.fillStyle = style.bgColor;
+          lines.forEach((line, index) => {
+            const w = ctx.measureText(line).width;
+            const y = startY + index * lineHeight;
+            ctx.fillRect(canvas.width / 2 - w / 2 - padX, y - fontSize - padY, w + padX * 2, fontSize + padY * 2);
+          });
+          if (useShadow) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetY = 2;
+          }
+        }
+
+        // Contorno
+        if ((style.strokeWidth ?? 0) > 0) {
+          ctx.lineWidth = (style.strokeWidth ?? 0) * scale * 2;
+          ctx.strokeStyle = style.strokeColor || '#000000';
+          ctx.lineJoin = 'round';
+          lines.forEach((line, index) => {
+            ctx.strokeText(line, canvas.width / 2, startY + index * lineHeight);
+          });
+        }
+
+        ctx.fillStyle = style.color || '#FFFFFF';
         lines.forEach((line, index) => {
-          const textY = startY + (index * lineHeight);
-          ctx.fillText(line, canvas.width / 2, textY);
+          ctx.fillText(line, canvas.width / 2, startY + index * lineHeight);
         });
-        
-        // Resetar sombra
+
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
