@@ -11,6 +11,7 @@ export const VideoPreview = () => {
   const [zoom, setZoom] = useState(1);
   const [, forceRerender] = useState(0);
   const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
+  const [currentSubtitleStyle, setCurrentSubtitleStyle] = useState<any>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const currentAudioClipRef = useRef<string | null>(null);
   const lastRenderTimeRef = useRef<number>(0);
