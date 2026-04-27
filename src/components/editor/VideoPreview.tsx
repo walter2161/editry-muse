@@ -191,8 +191,10 @@ export const VideoPreview = () => {
 
     if (currentClip && currentClip.text && !isHidden) {
       setCurrentSubtitle(currentClip.text);
+      setCurrentSubtitleStyle(currentClip.subtitleStyle || null);
     } else {
       setCurrentSubtitle('');
+      setCurrentSubtitleStyle(null);
     }
   };
 
