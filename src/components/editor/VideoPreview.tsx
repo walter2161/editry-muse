@@ -606,7 +606,7 @@ export const VideoPreview = () => {
   const clearCache = () => {
     imageCacheRef.current.clear();
     currentAudioClipRef.current = null;
-    stopAudio();
+    stopAllAudio();
     forceRerender(prev => prev + 1);
   };
 
