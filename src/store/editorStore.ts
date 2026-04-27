@@ -28,6 +28,20 @@ export interface Clip {
   text?: string; // Texto da legenda
   readingSpeed?: number; // Velocidade de leitura (palavras por minuto)
   trimStart?: number; // Offset de onde começar a reproduzir o arquivo (em ms)
+  // Estilo de legenda
+  subtitleStyle?: {
+    fontFamily?: string;
+    fontSize?: number; // px no canvas 1080x1920 (referência)
+    fontWeight?: number;
+    color?: string;
+    bgColor?: string; // background atrás do texto (com alpha em hex 8 dígitos opcional)
+    strokeColor?: string;
+    strokeWidth?: number;
+    italic?: boolean;
+    uppercase?: boolean;
+    bottomOffset?: number; // px a partir do bottom do canvas
+    shadow?: boolean;
+  };
 }
 
 export interface TrackState {
