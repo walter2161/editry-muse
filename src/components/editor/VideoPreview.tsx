@@ -279,19 +279,27 @@ export const VideoPreview = () => {
   };
 
   const renderThumbnail = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-    // Pegar a primeira imagem dos clips
-    const firstImageClip = clips.find(c => c.type === 'image' && c.track.startsWith('V'));
-    if (!firstImageClip) return;
+    // Pegar a primeira imagem dos clips, ou a primeira mídia disponível como fallback
+    let media: HTMLImageElement | HTMLVideoElement | null = null;
+    const firstImageClip = clips.find(c => (c.type === 'image' || c.type === 'video') && c.track.startsWith('V'));
+    if (firstImageClip) {
+      const mediaItem = mediaItems.find(m => m.id === firstImageClip.mediaId);
+      if (mediaItem) media = getDrawable(mediaItem);
+    }
+    if (!media) {
+      const fallback = mediaItems.find(m => m.type === 'image' || m.type === 'video');
+      if (fallback) media = getDrawable(fallback);
+    }
 
-    const mediaItem = mediaItems.find(m => m.id === firstImageClip.mediaId);
-    if (!mediaItem) return;
+    // Fundo escuro para não ficar preto puro caso não haja mídia
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const media = getDrawable(mediaItem);
-    if (!media) return;
-
-    // Desenhar a imagem de fundo
-    const imgProps = fitImageToCanvas(media, canvas);
-    ctx.drawImage(media, imgProps.offsetX, imgProps.offsetY, imgProps.drawWidth, imgProps.drawHeight);
+    if (media) {
+      // Desenhar a imagem de fundo
+      const imgProps = fitImageToCanvas(media, canvas);
+      ctx.drawImage(media, imgProps.offsetX, imgProps.offsetY, imgProps.drawWidth, imgProps.drawHeight);
+    }
 
     // Gradient overlay (escuro embaixo, transparente em cima)
     const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
