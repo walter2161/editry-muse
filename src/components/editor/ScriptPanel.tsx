@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Captions, RefreshCw } from 'lucide-react';
+import { Sparkles, Captions, RefreshCw, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEditorStore } from '@/store/editorStore';
 import { usePropertyStore } from '@/store/propertyStore';
+import { SubtitleEditorDialog } from './SubtitleEditorDialog';
 
 const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
 
