@@ -530,7 +530,7 @@ export const ExportVideoDialog = () => {
       const trackState = trackStates.find(t => t.name === currentSubtitle.track);
       if (!trackState?.hidden) {
         // Configurar estilo do texto - Montserrat, text-lg, com sombra
-        const fontSize = Math.floor(canvas.height * 0.022); // ~text-lg (aproximadamente)
+        const fontSize = Math.floor(canvas.height * 0.044); // legenda dobrada (~text-4xl)
         ctx.font = `600 ${fontSize}px Montserrat, Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -567,7 +567,7 @@ export const ExportVideoDialog = () => {
         ctx.fillStyle = '#FFFFFF';
         
         // Calcular posição: 100px do rodapé
-        const subtitleBottomMargin = 100;
+        const subtitleBottomMargin = 220;
         const totalHeight = lines.length * lineHeight;
         const startY = canvas.height - subtitleBottomMargin - totalHeight + lineHeight;
         

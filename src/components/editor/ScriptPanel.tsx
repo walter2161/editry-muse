@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Captions, RefreshCw } from 'lucide-react';
+import { Sparkles, Captions, RefreshCw, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEditorStore } from '@/store/editorStore';
 import { usePropertyStore } from '@/store/propertyStore';
+import { SubtitleEditorDialog } from './SubtitleEditorDialog';
 
 const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
 
@@ -12,8 +13,10 @@ export const ScriptPanel = () => {
   const [script, setScript] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const { addClip, clips, updateTotalDuration } = useEditorStore();
   const { propertyData } = usePropertyStore();
+  const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
 
   const generateScript = async () => {
     if (!propertyData) {
@@ -286,9 +289,22 @@ REGRAS IMPORTANTES:
         )}
       </Button>
 
+      <Button
+        onClick={() => setEditorOpen(true)}
+        disabled={subtitleCount === 0}
+        variant="outline"
+        size="sm"
+        className="w-full"
+      >
+        <Pencil className="w-4 h-4 mr-2" />
+        Editar Legendas {subtitleCount > 0 && `(${subtitleCount})`}
+      </Button>
+
       <p className="text-xs text-muted-foreground">
         As legendas serão adicionadas à timeline e reproduzidas com voz do navegador
       </p>
+
+      <SubtitleEditorDialog open={editorOpen} onOpenChange={setEditorOpen} />
     </div>
   );
 };
