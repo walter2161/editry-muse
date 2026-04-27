@@ -73,13 +73,16 @@ export const VideoPreview = () => {
     lastRenderTimeRef.current = now;
 
     renderFrame(ctx, currentTime);
-    
+
+    // Tempo ajustado considerando offset da thumbnail (1s no início)
+    const adjustedTime = thumbnailData.enabled ? currentTime - 1000 : currentTime;
+
     // Sempre atualizar legendas conforme o tempo (mesmo pausado)
-    handleSubtitles(currentTime);
+    handleSubtitles(adjustedTime);
 
     // Gerenciar reprodução de áudio
     if (isPlaying) {
-      playAudio(currentTime);
+      playAudio(adjustedTime);
     } else {
       stopAudio();
       currentAudioClipRef.current = null;
