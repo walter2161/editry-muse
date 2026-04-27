@@ -73,13 +73,16 @@ export const VideoPreview = () => {
     lastRenderTimeRef.current = now;
 
     renderFrame(ctx, currentTime);
-    
+
+    // Tempo ajustado considerando offset da thumbnail (1s no início)
+    const adjustedTime = thumbnailData.enabled ? currentTime - 1000 : currentTime;
+
     // Sempre atualizar legendas conforme o tempo (mesmo pausado)
-    handleSubtitles(currentTime);
+    handleSubtitles(adjustedTime);
 
     // Gerenciar reprodução de áudio
     if (isPlaying) {
-      playAudio(currentTime);
+      playAudio(adjustedTime);
     } else {
       stopAudio();
       currentAudioClipRef.current = null;
@@ -276,19 +279,27 @@ export const VideoPreview = () => {
   };
 
   const renderThumbnail = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-    // Pegar a primeira imagem dos clips
-    const firstImageClip = clips.find(c => c.type === 'image' && c.track.startsWith('V'));
-    if (!firstImageClip) return;
+    // Pegar a primeira imagem dos clips, ou a primeira mídia disponível como fallback
+    let media: HTMLImageElement | HTMLVideoElement | null = null;
+    const firstImageClip = clips.find(c => (c.type === 'image' || c.type === 'video') && c.track.startsWith('V'));
+    if (firstImageClip) {
+      const mediaItem = mediaItems.find(m => m.id === firstImageClip.mediaId);
+      if (mediaItem) media = getDrawable(mediaItem);
+    }
+    if (!media) {
+      const fallback = mediaItems.find(m => m.type === 'image' || m.type === 'video');
+      if (fallback) media = getDrawable(fallback);
+    }
 
-    const mediaItem = mediaItems.find(m => m.id === firstImageClip.mediaId);
-    if (!mediaItem) return;
+    // Fundo escuro para não ficar preto puro caso não haja mídia
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const media = getDrawable(mediaItem);
-    if (!media) return;
-
-    // Desenhar a imagem de fundo
-    const imgProps = fitImageToCanvas(media, canvas);
-    ctx.drawImage(media, imgProps.offsetX, imgProps.offsetY, imgProps.drawWidth, imgProps.drawHeight);
+    if (media) {
+      // Desenhar a imagem de fundo
+      const imgProps = fitImageToCanvas(media, canvas);
+      ctx.drawImage(media, imgProps.offsetX, imgProps.offsetY, imgProps.drawWidth, imgProps.drawHeight);
+    }
 
     // Gradient overlay (escuro embaixo, transparente em cima)
     const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
@@ -444,7 +455,7 @@ export const VideoPreview = () => {
     const videoClips = clips.filter(c => c.track.startsWith('V')).sort((a, b) => a.start - b.start);
     
     const currentClip = videoClips.find(
-      c => c.start <= time && c.start + c.duration > time
+      c => c.start <= adjustedTime && c.start + c.duration > adjustedTime
     );
 
     if (!currentClip) return;
@@ -462,7 +473,7 @@ export const VideoPreview = () => {
     // Suporte para vídeo e imagem
     const media = getDrawable(mediaItem);
     if (!media) return;
-    const timeInClip = time - currentClip.start;
+    const timeInClip = adjustedTime - currentClip.start;
     const transitionDuration = currentClip.transitionDuration || 500;
     
     // Calcular progress contínuo do clipe (0 a 1 ao longo da duração total)
