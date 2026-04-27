@@ -472,8 +472,28 @@ REGRAS IMPORTANTES:
         Editar Legendas {subtitleCount > 0 && `(${subtitleCount})`}
       </Button>
 
+      <Button
+        onClick={generateVoiceover}
+        disabled={isGeneratingVoice || isGenerating || isGeneratingSubtitles}
+        variant="default"
+        size="sm"
+        className="w-full"
+      >
+        {isGeneratingVoice ? (
+          <>
+            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            Gerando Locução...
+          </>
+        ) : (
+          <>
+            <Mic className="w-4 h-4 mr-2" />
+            Gerar Locução (LMNT)
+          </>
+        )}
+      </Button>
+
       <p className="text-xs text-muted-foreground">
-        As legendas serão adicionadas à timeline e reproduzidas com voz do navegador
+        Legendas vão para a timeline. A locução LMNT é gerada a partir das legendas e adicionada na trilha A1.
       </p>
 
       <SubtitleEditorDialog open={editorOpen} onOpenChange={setEditorOpen} />
