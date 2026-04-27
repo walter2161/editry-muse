@@ -92,97 +92,103 @@ export const VideoPreview = () => {
     }
   }, [currentTime, clips, mediaItems, isPlaying, trackStates]);
 
-  const playAudio = (time: number) => {
-    const audioClips = clips.filter(c => c.type === 'audio');
-    const currentAudioClip = audioClips.find(
-      c => c.start <= time && c.start + c.duration > time
-    );
-
-    // Verificar se o track está mutado
-    const trackState = trackStates.find(t => t.name === currentAudioClip?.track);
-    const isMuted = trackState?.muted || false;
-
-    // Se mudou de clip ou não há clip ou está mutado, parar áudio atual
-    const clipId = currentAudioClip?.id || null;
-    if (clipId !== currentAudioClipRef.current || isMuted) {
-      stopAudio();
-      currentAudioClipRef.current = clipId;
-    }
-
-    if (!currentAudioClip || isMuted) {
-      return;
-    }
-
-    // Se já está tocando o clip correto, não fazer nada
-    if (audioSourceRef.current && clipId === currentAudioClipRef.current) {
-      return;
-    }
-
-    const mediaItem = mediaItems.find(m => m.id === currentAudioClip.mediaId);
-    if (!mediaItem || !mediaItem.data) {
-      return;
-    }
-
-    // Verificar se é um AudioBuffer válido
-    if (!(mediaItem.data instanceof AudioBuffer)) {
-      console.error('Dados da mídia não são um AudioBuffer:', mediaItem);
-      return;
-    }
-
-    // Inicializar AudioContext se necessário
+  const ensureAudioContext = (): AudioContext | null => {
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      try {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      } catch (e) {
+        console.error('AudioContext indisponível:', e);
+        return null;
+      }
     }
-
-    const audioContext = audioContextRef.current;
-    
-    // Retomar o contexto se estiver suspenso
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
+    const ctx = audioContextRef.current;
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
     }
+    return ctx;
+  };
 
-    try {
-      // Criar novo source
-      const source = audioContext.createBufferSource();
-      source.buffer = mediaItem.data;
-      
-      // Criar gain node para controle de volume
-      const gainNode = audioContext.createGain();
-      gainNode.gain.value = currentAudioClip.volume;
-      
-      // Conectar nodes
-      source.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Calcular offset do áudio
-      const timeInClip = (time - currentAudioClip.start) / 1000;
-      const offset = Math.max(0, timeInClip / currentAudioClip.speed);
-      
-      // Aplicar velocidade
-      source.playbackRate.value = currentAudioClip.speed;
-      
-      // Calcular duração restante
-      const remainingDuration = Math.max(0, (currentAudioClip.duration / 1000) - timeInClip);
-      
-      // Iniciar reprodução
-      source.start(0, offset, remainingDuration);
-      
-      audioSourceRef.current = source;
-      gainNodeRef.current = gainNode;
-    } catch (error) {
-      console.error('Erro ao reproduzir áudio:', error);
+  const stopTrackAudio = (trackName: string) => {
+    const entry = activeAudioSourcesRef.current.get(trackName);
+    if (entry) {
+      try { entry.source.stop(); } catch {}
+      try { entry.source.disconnect(); } catch {}
+      try { entry.gain.disconnect(); } catch {}
+      activeAudioSourcesRef.current.delete(trackName);
     }
   };
 
-  const stopAudio = () => {
-    if (audioSourceRef.current) {
-      try {
-        audioSourceRef.current.stop();
-      } catch (e) {
-        // Ignorar erro se já parado
+  const stopAllAudio = () => {
+    activeAudioSourcesRef.current.forEach((_, trackName) => stopTrackAudio(trackName));
+  };
+
+  const playAudio = (time: number) => {
+    const audioClips = clips.filter(c => c.type === 'audio');
+    // Agrupar por trilha (A1, A2, ...) e tocar UM clip por trilha
+    const tracks = Array.from(new Set(audioClips.map(c => c.track)));
+
+    // Parar trilhas que não têm clip ativo
+    activeAudioSourcesRef.current.forEach((_, trackName) => {
+      if (!tracks.includes(trackName)) stopTrackAudio(trackName);
+    });
+
+    tracks.forEach((trackName) => {
+      const trackState = trackStates.find(t => t.name === trackName);
+      const isMuted = trackState?.muted || false;
+
+      const currentClip = audioClips.find(
+        c => c.track === trackName && c.start <= time && c.start + c.duration > time
+      );
+
+      const active = activeAudioSourcesRef.current.get(trackName);
+
+      if (!currentClip || isMuted) {
+        if (active) stopTrackAudio(trackName);
+        return;
       }
-      audioSourceRef.current = null;
-    }
+
+      // Se já tocando o mesmo clip, manter
+      if (active && active.clipId === currentClip.id) return;
+
+      // Trocou clip ou ainda não iniciou: parar antigo e iniciar novo
+      if (active) stopTrackAudio(trackName);
+
+      const mediaItem = mediaItems.find(m => m.id === currentClip.mediaId);
+      if (!mediaItem || !mediaItem.data) return;
+      if (!(mediaItem.data instanceof AudioBuffer)) {
+        console.warn(`Áudio do clip ${currentClip.id} não é AudioBuffer (trilha ${trackName})`, mediaItem);
+        return;
+      }
+
+      const audioContext = ensureAudioContext();
+      if (!audioContext) return;
+
+      try {
+        const source = audioContext.createBufferSource();
+        source.buffer = mediaItem.data;
+
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = currentClip.volume;
+
+        source.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        const timeInClip = (time - currentClip.start) / 1000;
+        const offset = Math.max(0, timeInClip / currentClip.speed);
+        source.playbackRate.value = currentClip.speed;
+
+        const remainingDuration = Math.max(0, (currentClip.duration / 1000) - timeInClip);
+        source.start(0, offset, remainingDuration);
+
+        activeAudioSourcesRef.current.set(trackName, {
+          source,
+          gain: gainNode,
+          clipId: currentClip.id,
+        });
+      } catch (error) {
+        console.error(`Erro ao reproduzir áudio da trilha ${trackName}:`, error);
+      }
+    });
   };
 
   const handleSubtitles = (time: number) => {
