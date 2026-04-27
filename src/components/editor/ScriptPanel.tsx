@@ -289,9 +289,22 @@ REGRAS IMPORTANTES:
         )}
       </Button>
 
+      <Button
+        onClick={() => setEditorOpen(true)}
+        disabled={subtitleCount === 0}
+        variant="outline"
+        size="sm"
+        className="w-full"
+      >
+        <Pencil className="w-4 h-4 mr-2" />
+        Editar Legendas {subtitleCount > 0 && `(${subtitleCount})`}
+      </Button>
+
       <p className="text-xs text-muted-foreground">
         As legendas serão adicionadas à timeline e reproduzidas com voz do navegador
       </p>
+
+      <SubtitleEditorDialog open={editorOpen} onOpenChange={setEditorOpen} />
     </div>
   );
 };
