@@ -4,7 +4,7 @@ export interface MediaItem {
   id: string;
   type: 'image' | 'video' | 'audio';
   name: string;
-  data: any;
+  data?: any;
   duration?: number;
   thumbnail?: string;
   audioBlob?: Blob;
@@ -298,15 +298,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setProjectName: (name) => set({ projectName: name }),
 
-  loadProject: (data) => set({
-    mediaItems: data.mediaItems || [],
-    clips: data.clips || [],
-    globalSettings: data.globalSettings || get().globalSettings,
-    projectName: data.projectName || 'Projeto Importado',
-    selectedClipId: null,
-    selectedClipIds: [],
-    currentTime: 0,
-  }),
+  loadProject: (data) => {
+    const nextClips = data.clips || [];
+    const nextTotalDuration = nextClips.reduce((max: number, clip: Clip) => 
+      Math.max(max, clip.start + clip.duration), 0
+    );
+
+    set({
+      mediaItems: data.mediaItems || [],
+      clips: nextClips,
+      globalSettings: data.globalSettings || get().globalSettings,
+      projectName: data.projectName || 'Projeto Importado',
+      selectedClipId: null,
+      selectedClipIds: [],
+      currentTime: 0,
+      totalDuration: nextTotalDuration,
+    });
+  },
 
   resetProject: () => {
     // Limpar também o localStorage primeiro, para evitar rehidratação acidental
