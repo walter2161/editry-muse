@@ -204,8 +204,14 @@ export const ResourcePanel = () => {
         duration: track.duration
       });
 
-      // Adicionar à timeline
-      const clipsInTrack = useEditorStore.getState().clips.filter(c => c.track === 'A1');
+      // Garantir trilha A2 (música)
+      const storeState = useEditorStore.getState();
+      if (!storeState.trackStates.find((t) => t.name === 'A2')) {
+        storeState.addTrackState('A2');
+      }
+
+      // Adicionar à timeline (trilha de música = A2)
+      const clipsInTrack = useEditorStore.getState().clips.filter(c => c.track === 'A2');
       const lastPosition = clipsInTrack.reduce((max, clip) => 
         Math.max(max, clip.start + clip.duration), 0
       );
@@ -214,13 +220,13 @@ export const ResourcePanel = () => {
         id: `clip-${Date.now()}-${Math.random().toString(36).substring(2)}`,
         type: 'audio',
         mediaId,
-        track: 'A1',
+        track: 'A2',
         start: lastPosition,
         duration: track.duration,
         scale: 1,
         brightness: 0,
         contrast: 0,
-        volume: 1,
+        volume: 0.5,
         speed: 1,
         opacity: 1,
         transition: 'cross-fade',
