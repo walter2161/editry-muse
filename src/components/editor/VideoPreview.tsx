@@ -74,10 +74,12 @@ export const VideoPreview = () => {
 
     renderFrame(ctx, currentTime);
     
+    // Sempre atualizar legendas conforme o tempo (mesmo pausado)
+    handleSubtitles(currentTime);
+
     // Gerenciar reprodução de áudio
     if (isPlaying) {
       playAudio(currentTime);
-      handleSubtitles(currentTime);
     } else {
       stopAudio();
       currentAudioClipRef.current = null;
