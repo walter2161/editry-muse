@@ -640,15 +640,27 @@ export const VideoPreview = () => {
           </Button>
         </div>
       </div>
-      <div className="relative w-full h-full flex items-center justify-center p-8">
-        <div className="relative" style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s', containerType: 'size' } as any}>
+      <div className="relative w-full h-full flex items-center justify-center p-8 overflow-hidden">
+        <div
+          className="relative"
+          style={{
+            transform: `scale(${zoom})`,
+            transition: 'transform 0.2s',
+            containerType: 'size',
+            height: '100%',
+            aspectRatio: `${canvasDimensions.width} / ${canvasDimensions.height}`,
+            maxWidth: '100%',
+          } as any}
+        >
           <canvas
             id="preview-canvas"
             ref={canvasRef}
             width={canvasDimensions.width}
             height={canvasDimensions.height}
-            className="max-w-full max-h-full shadow-2xl"
+            className="shadow-2xl block"
             style={{
+              width: '100%',
+              height: '100%',
               border: '3px solid white',
               boxShadow: '0 0 0 1px rgba(255,255,255,0.3)',
             }}
