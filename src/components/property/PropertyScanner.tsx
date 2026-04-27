@@ -602,39 +602,32 @@ ${propertyData.valorEntrada ? '- DESTACAR que aceita entrada facilitada e o valo
   };
 
   return (
-    <div className="space-y-4 p-6 bg-card rounded-lg border">
-      <h2 className="text-2xl font-bold">Escanear Imóvel</h2>
-      <p className="text-sm text-muted-foreground">
-        Cole a URL de um anúncio de imóvel para extrair automaticamente todas as informações e imagens
-      </p>
-      
-      <div className="space-y-3">
-        <Label>URL do Imóvel</Label>
-        <div className="flex gap-2">
-          <Input 
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.vendebens.com.br/imoveis/..."
-            disabled={isScanning}
-          />
-          <Button 
-            onClick={handleScan} 
-            disabled={isScanning}
-            size="lg"
-          >
-            {isScanning ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Escaneando...
-              </>
-            ) : (
-              <>
-                <Search className="w-4 h-4 mr-2" />
-                Escanear
-              </>
-            )}
-          </Button>
-        </div>
+    <div className="space-y-2 p-3 bg-card rounded-md border">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Escanear Imóvel</h2>
+        <span className="text-[11px] text-muted-foreground hidden sm:inline">Cole a URL para extrair dados e fotos</span>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.vendebens.com.br/imoveis/..."
+          disabled={isScanning}
+          className="h-8 text-xs"
+        />
+        <Button onClick={handleScan} disabled={isScanning} size="sm">
+          {isScanning ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              Escaneando
+            </>
+          ) : (
+            <>
+              <Search className="w-3.5 h-3.5 mr-1.5" />
+              Escanear
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
