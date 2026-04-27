@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Captions, RefreshCw, Pencil } from 'lucide-react';
+import { Sparkles, Captions, RefreshCw, Pencil, Mic } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEditorStore } from '@/store/editorStore';
 import { usePropertyStore } from '@/store/propertyStore';
 import { SubtitleEditorDialog } from './SubtitleEditorDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
 
@@ -13,10 +14,103 @@ export const ScriptPanel = () => {
   const [script, setScript] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+  const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const { addClip, clips, updateTotalDuration, globalSettings } = useEditorStore();
+  const { addClip, addMediaItem, clips, updateTotalDuration, globalSettings } = useEditorStore();
   const { propertyData } = usePropertyStore();
   const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
+
+  const generateVoiceover = async () => {
+    // Montar texto a partir das legendas (ordenadas) ou cair no roteiro
+    const subtitleClips = clips
+      .filter((c) => c.type === 'subtitle')
+      .sort((a, b) => a.start - b.start);
+
+    const sourceText = subtitleClips.length > 0
+      ? subtitleClips.map((c) => (c.text || '').trim()).filter(Boolean).join(' ')
+      : script.trim();
+
+    if (!sourceText) {
+      toast.error('Gere as legendas (ou escreva um roteiro) primeiro');
+      return;
+    }
+
+    setIsGeneratingVoice(true);
+    toast.info('Gerando locução com LMNT...');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('lmnt-tts', {
+        body: {
+          text: sourceText,
+          voice: 'lily',
+          language: 'pt',
+          model: 'blizzard',
+          format: 'mp3',
+          speed: 1.0,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.audioBase64) throw new Error('Resposta sem áudio');
+
+      // Decodificar base64 -> Blob
+      const binary = atob(data.audioBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: data.mimeType || 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+
+      // Calcular duração real
+      const duration = await new Promise<number>((resolve) => {
+        const audio = new Audio();
+        audio.src = url;
+        audio.onloadedmetadata = () => resolve((audio.duration || 0) * 1000);
+        audio.onerror = () => resolve(0);
+      });
+
+      const durationMs = Math.max(1000, Math.round(duration));
+      const mediaId = `lmnt-${Date.now()}`;
+
+      addMediaItem({
+        id: mediaId,
+        type: 'audio',
+        name: `Locução LMNT ${new Date().toLocaleTimeString('pt-BR')}`,
+        data: url,
+        duration: durationMs,
+        audioBlob: blob,
+      });
+
+      // Posicionar logo após últimos clips de áudio existentes em A1
+      const audioClips = clips.filter((c) => c.track === 'A1');
+      const start = audioClips.reduce(
+        (max, c) => Math.max(max, c.start + c.duration),
+        0
+      );
+
+      addClip({
+        id: `clip-${mediaId}`,
+        type: 'audio',
+        mediaId,
+        track: 'A1',
+        start,
+        duration: durationMs,
+        scale: 1,
+        brightness: 0,
+        contrast: 0,
+        volume: 1,
+        speed: 1,
+        opacity: 1,
+      });
+
+      updateTotalDuration();
+      toast.success(`Locução adicionada (${(durationMs / 1000).toFixed(1)}s) na trilha A1`);
+    } catch (err: any) {
+      console.error('Erro LMNT:', err);
+      toast.error(`Erro ao gerar locução: ${err?.message || 'desconhecido'}`);
+    } finally {
+      setIsGeneratingVoice(false);
+    }
+  };
 
   const generateScript = async () => {
     if (!propertyData) {
