@@ -643,16 +643,44 @@ export const VideoPreview = () => {
           </div>
           
           {/* Legendas */}
-          {currentSubtitle && (
-            <div className="absolute bottom-[220px] left-1/2 transform -translate-x-1/2 text-center max-w-[90%]">
-              <p 
-                className="text-4xl font-semibold leading-relaxed text-white font-montserrat"
-                style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}
+          {currentSubtitle && (() => {
+            const s = currentSubtitleStyle || {};
+            // O canvas referência é 1080x1920 (9:16). Convertemos px para vw relativos ao canvas exibido.
+            const fontSizePx = s.fontSize ?? 72; // px no canvas 1080
+            const bottomPx = s.bottomOffset ?? 220;
+            // Usamos cqw via style inline para escalar com o tamanho do canvas exibido
+            const text = s.uppercase ? currentSubtitle.toUpperCase() : currentSubtitle;
+            const stroke = s.strokeWidth && s.strokeColor
+              ? `-${s.strokeWidth}px 0 ${s.strokeColor}, ${s.strokeWidth}px 0 ${s.strokeColor}, 0 -${s.strokeWidth}px ${s.strokeColor}, 0 ${s.strokeWidth}px ${s.strokeColor}`
+              : '';
+            const shadow = s.shadow !== false ? '0 2px 6px rgba(0,0,0,0.85)' : '';
+            const textShadow = [stroke, shadow].filter(Boolean).join(', ');
+            return (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 text-center max-w-[92%] pointer-events-none"
+                style={{ bottom: `${(bottomPx / 1920) * 100}%` }}
               >
-                {currentSubtitle}
-              </p>
-            </div>
-          )}
+                <span
+                  style={{
+                    fontFamily: s.fontFamily || 'Montserrat, system-ui, sans-serif',
+                    fontSize: `${(fontSizePx / 1920) * 100}cqh`,
+                    fontWeight: s.fontWeight ?? 700,
+                    fontStyle: s.italic ? 'italic' : 'normal',
+                    color: s.color || '#ffffff',
+                    backgroundColor: s.bgColor || 'transparent',
+                    padding: s.bgColor ? '0.2em 0.5em' : 0,
+                    borderRadius: s.bgColor ? '0.2em' : 0,
+                    textShadow,
+                    lineHeight: 1.25,
+                    display: 'inline-block',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {text}
+                </span>
+              </div>
+            );
+          })()}
         </div>
         {clips.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
