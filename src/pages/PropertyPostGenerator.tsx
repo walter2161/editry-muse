@@ -20,60 +20,31 @@ const PropertyPostGenerator = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <Home className="w-6 h-6 text-primary-foreground" />
+        <div className="container mx-auto px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center shrink-0">
+                <Home className="w-4 h-4 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">Gerador de Posts de Imóveis</h1>
-                <p className="text-sm text-muted-foreground">Crie reels 9:16 profissionais para suas redes sociais</p>
+              <div className="min-w-0">
+                <h1 className="text-sm font-semibold leading-tight truncate">Posts de Imóveis</h1>
+                <p className="text-[11px] text-muted-foreground leading-tight truncate">Reels 9:16 para redes sociais</p>
               </div>
             </div>
-            <Button onClick={goToEditor} size="lg">
-              <Video className="w-5 h-5 mr-2" />
-              Ir para o Editor
-              <ArrowRight className="w-4 h-4 ml-2" />
+            <Button onClick={goToEditor} size="sm">
+              <Video className="w-3.5 h-3.5 mr-1.5" />
+              Editor
+              <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <PropertyScanner />
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <main className="container mx-auto px-3 py-3 space-y-3">
+        <PropertyScanner />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <PropertyForm />
           <CopyGenerator />
-        </div>
-
-        <div className="mt-8 p-6 bg-card rounded-lg border">
-          <h3 className="text-lg font-semibold mb-3">Como funciona?</h3>
-          <ol className="space-y-2 text-muted-foreground">
-            <li className="flex gap-2">
-              <span className="font-bold text-primary">1.</span>
-              Cole a URL do imóvel e clique em "Escanear" para preencher tudo automaticamente
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-primary">2.</span>
-              Ou preencha manualmente os dados do imóvel no formulário
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-primary">3.</span>
-              Clique em "Gerar Copy" para criar o texto automaticamente com IA
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-primary">4.</span>
-              O scan automático já adiciona as imagens ao editor (formato 9:16)
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-primary">5.</span>
-              Organize na timeline e exporte seu vídeo pronto!
-            </li>
-          </ol>
         </div>
       </main>
     </div>
