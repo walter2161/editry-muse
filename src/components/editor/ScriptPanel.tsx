@@ -21,8 +21,10 @@ export const ScriptPanel = () => {
   const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
 
   const generateVoiceover = async () => {
+    const store = useEditorStore.getState();
+
     // Montar texto a partir das legendas (ordenadas) ou cair no roteiro
-    const subtitleClips = clips
+    const subtitleClips = store.clips
       .filter((c) => c.type === 'subtitle')
       .sort((a, b) => a.start - b.start);
 
@@ -53,46 +55,48 @@ export const ScriptPanel = () => {
       if (error) throw error;
       if (!data?.audioBase64) throw new Error('Resposta sem áudio');
 
-      // Decodificar base64 -> Blob
+      // Decodificar base64 -> bytes
       const binary = atob(data.audioBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: data.mimeType || 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
 
-      // Calcular duração real
-      const duration = await new Promise<number>((resolve) => {
-        const audio = new Audio();
-        audio.src = url;
-        audio.onloadedmetadata = () => resolve((audio.duration || 0) * 1000);
-        audio.onerror = () => resolve(0);
-      });
+      // Decodificar para AudioBuffer (necessário para o preview tocar)
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await audioContext.decodeAudioData(bytes.buffer.slice(0));
+      const durationMs = Math.max(1000, Math.round(audioBuffer.duration * 1000));
 
-      const durationMs = Math.max(1000, Math.round(duration));
+      // Garantir trilha A1
+      if (!store.trackStates.find((t) => t.name === 'A1')) {
+        store.addTrackState('A1');
+      }
+
+      // Remover locuções LMNT antigas em A1 (substituir)
+      const oldVoiceClips = store.clips.filter(
+        (c) => c.track === 'A1' && c.mediaId.startsWith('lmnt-')
+      );
+      oldVoiceClips.forEach((c) => store.removeClip(c.id));
+      store.mediaItems
+        .filter((m) => m.id.startsWith('lmnt-'))
+        .forEach((m) => store.removeMediaItem(m.id));
+
       const mediaId = `lmnt-${Date.now()}`;
 
       addMediaItem({
         id: mediaId,
         type: 'audio',
         name: `Locução LMNT ${new Date().toLocaleTimeString('pt-BR')}`,
-        data: url,
+        data: audioBuffer,
         duration: durationMs,
         audioBlob: blob,
       });
-
-      // Posicionar logo após últimos clips de áudio existentes em A1
-      const audioClips = clips.filter((c) => c.track === 'A1');
-      const start = audioClips.reduce(
-        (max, c) => Math.max(max, c.start + c.duration),
-        0
-      );
 
       addClip({
         id: `clip-${mediaId}`,
         type: 'audio',
         mediaId,
         track: 'A1',
-        start,
+        start: 0,
         duration: durationMs,
         scale: 1,
         brightness: 0,
