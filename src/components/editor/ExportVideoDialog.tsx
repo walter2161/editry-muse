@@ -567,7 +567,7 @@ export const ExportVideoDialog = () => {
         ctx.fillStyle = '#FFFFFF';
         
         // Calcular posição: 100px do rodapé
-        const subtitleBottomMargin = 100;
+        const subtitleBottomMargin = 220;
         const totalHeight = lines.length * lineHeight;
         const startY = canvas.height - subtitleBottomMargin - totalHeight + lineHeight;
         
