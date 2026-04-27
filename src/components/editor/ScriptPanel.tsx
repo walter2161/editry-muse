@@ -153,6 +153,77 @@ REGRAS IMPORTANTES:
     }
   };
 
+  // Converte números e valores em palavras para melhorar pronúncia da TTS
+  const normalizeForSpeech = (text: string): string => {
+    let t = text;
+
+    // R$ 1.234.567,89 ou R$ 1234 -> "X reais"
+    t = t.replace(/R\$\s*([\d\.,]+)/gi, (_m, num: string) => {
+      const clean = num.replace(/\./g, '').replace(',', '.');
+      const value = parseFloat(clean);
+      if (isNaN(value)) return num;
+      return `${numberToWordsPtBr(Math.round(value))} reais`;
+    });
+
+    // m² -> "metros quadrados"
+    t = t.replace(/m²/gi, 'metros quadrados');
+    t = t.replace(/m2\b/gi, 'metros quadrados');
+
+    // Abreviações comuns
+    t = t.replace(/\bAv\./gi, 'Avenida');
+    t = t.replace(/\bR\./gi, 'Rua');
+    t = t.replace(/\bnº\s*/gi, 'número ');
+    t = t.replace(/\bnº/gi, 'número');
+    t = t.replace(/\bVl\./gi, 'Vila');
+    t = t.replace(/\bJd\./gi, 'Jardim');
+
+    // Limpeza
+    t = t.replace(/\s+/g, ' ').trim();
+    return t;
+  };
+
+  // Converte inteiro em pt-BR (cobre até bilhões)
+  const numberToWordsPtBr = (n: number): string => {
+    if (n === 0) return 'zero';
+    if (n < 0) return 'menos ' + numberToWordsPtBr(-n);
+
+    const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+    const especiais = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+    const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+    const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+    const ate999 = (num: number): string => {
+      if (num === 100) return 'cem';
+      const c = Math.floor(num / 100);
+      const resto = num % 100;
+      const parts: string[] = [];
+      if (c > 0) parts.push(centenas[c]);
+      if (resto > 0) {
+        if (resto < 10) parts.push(unidades[resto]);
+        else if (resto < 20) parts.push(especiais[resto - 10]);
+        else {
+          const d = Math.floor(resto / 10);
+          const u = resto % 10;
+          parts.push(u === 0 ? dezenas[d] : `${dezenas[d]} e ${unidades[u]}`);
+        }
+      }
+      return parts.join(' e ');
+    };
+
+    const partes: string[] = [];
+    const bilhoes = Math.floor(n / 1_000_000_000);
+    const milhoes = Math.floor((n % 1_000_000_000) / 1_000_000);
+    const milhares = Math.floor((n % 1_000_000) / 1000);
+    const resto = n % 1000;
+
+    if (bilhoes > 0) partes.push(`${bilhoes === 1 ? 'um bilhão' : `${ate999(bilhoes)} bilhões`}`);
+    if (milhoes > 0) partes.push(`${milhoes === 1 ? 'um milhão' : `${ate999(milhoes)} milhões`}`);
+    if (milhares > 0) partes.push(`${milhares === 1 ? 'mil' : `${ate999(milhares)} mil`}`);
+    if (resto > 0) partes.push(ate999(resto));
+
+    return partes.join(' e ');
+  };
+
   const generateSubtitles = () => {
     if (!script.trim()) {
       toast.error('Escreva ou gere um roteiro primeiro');
@@ -163,67 +234,74 @@ REGRAS IMPORTANTES:
     toast.info('Gerando legendas...');
 
     try {
-      // Limpar o texto
-      const cleanText = script
-        .replace(/\*\*/g, '')
-        .replace(/INÍCIO:|MEIO:|FIM:/gi, '')
-        .replace(/\n\n+/g, ' ')
-        .trim();
+      // 1. Limpar e normalizar para fala (corrige pronúncia)
+      const cleanText = normalizeForSpeech(
+        script
+          .replace(/\*\*/g, '')
+          .replace(/INÍCIO:|MEIO:|FIM:/gi, '')
+          .replace(/\n+/g, ' ')
+          .trim()
+      );
 
-      // Dividir o roteiro em frases
-      const sentences = cleanText
-        .split(/[.!?]+/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-
-      if (sentences.length === 0) {
-        toast.error('Não foi possível dividir o roteiro em frases');
+      // 2. Quebrar em chunks curtos estilo TikTok/Reels (3-5 palavras)
+      const allWords = cleanText.split(/\s+/).filter(Boolean);
+      if (allWords.length === 0) {
+        toast.error('Não foi possível dividir o roteiro');
         setIsGeneratingSubtitles(false);
         return;
       }
 
-      // Verificar se já existe track de legenda
+      const CHUNK_SIZE = 4; // palavras por legenda
+      const chunks: string[] = [];
+      for (let i = 0; i < allWords.length; i += CHUNK_SIZE) {
+        chunks.push(allWords.slice(i, i + CHUNK_SIZE).join(' '));
+      }
+
+      // 3. Calcular duração: distribuir proporcionalmente até preencher o limite
+      // Velocidade alvo: ~165 wpm (ritmo natural pt-BR para vídeo curto)
+      const WPM = 165;
+      const totalWords = allWords.length;
+      const naturalTotalMs = (totalWords / WPM) * 60 * 1000;
+
+      // Usar limite de tempo do projeto se ativo, senão duração natural
+      const targetTotalMs = globalSettings.timeLimitEnabled
+        ? Math.min(globalSettings.timeLimit - 1000, Math.max(naturalTotalMs, 15000))
+        : naturalTotalMs;
+
+      // Verificar posição inicial (após últimas legendas existentes)
       const subtitleClips = clips.filter(c => c.track === 'SUB1');
-      const startPosition = subtitleClips.reduce((max, clip) => 
+      const startPosition = subtitleClips.reduce((max, clip) =>
         Math.max(max, clip.start + clip.duration), 0
       );
 
-      // Calcular duração baseado no número de palavras (velocidade de fala: ~150 palavras/minuto)
-      const calculateDuration = (text: string) => {
-        const words = text.split(/\s+/).length;
-        const wpm = 150; // palavras por minuto
-        const durationSeconds = (words / wpm) * 60;
-        // Adicionar um buffer de tempo para respiração entre frases
-        return Math.max(2000, Math.ceil(durationSeconds * 1000) + 1000);
-      };
-
+      // Distribuir tempo proporcional ao número de palavras de cada chunk
       let currentStart = startPosition;
-      
-      // Criar clips de legenda para cada frase
-      sentences.forEach((sentence, index) => {
-        const duration = calculateDuration(sentence);
-        
+      chunks.forEach((chunk, index) => {
+        const wordsInChunk = chunk.split(/\s+/).length;
+        const proportion = wordsInChunk / totalWords;
+        const duration = Math.max(600, Math.round(targetTotalMs * proportion));
+
         addClip({
           id: `subtitle-${Date.now()}-${index}`,
           type: 'subtitle',
           mediaId: `subtitle-${Date.now()}-${index}`,
           track: 'SUB1',
           start: currentStart,
-          duration: duration,
+          duration,
           scale: 1,
           brightness: 0,
           contrast: 0,
           volume: 1,
           speed: 1,
           opacity: 1,
-          text: sentence
+          text: chunk,
         });
-        
+
         currentStart += duration;
       });
 
       updateTotalDuration();
-      toast.success(`${sentences.length} legendas adicionadas à timeline!`);
+      toast.success(`${chunks.length} legendas adicionadas (${(targetTotalMs / 1000).toFixed(1)}s total)`);
     } catch (error) {
       console.error('Erro ao gerar legendas:', error);
       toast.error('Erro ao gerar legendas. Tente novamente.');
