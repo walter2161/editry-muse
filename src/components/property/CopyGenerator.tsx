@@ -111,51 +111,42 @@ A copy deve:
   };
 
   return (
-    <div className="space-y-4 p-6 bg-card rounded-lg border">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-primary" />
+    <div className="space-y-2 p-3 bg-card rounded-md border">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
           Copy com IA
         </h2>
-      </div>
-
-      <div className="space-y-3">
-        <Button 
-          onClick={generateCopy} 
-          disabled={isGenerating}
-          className="w-full"
-        >
-          {isGenerating ? (
-            <>
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              Gerando...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Gerar Copy
-            </>
-          )}
-        </Button>
-
         {generatedCopy && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label>Copy Gerada</Label>
-              <Button size="sm" variant="outline" onClick={copyCopy}>
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar
-              </Button>
-            </div>
-            <Textarea 
-              value={generatedCopy}
-              onChange={(e) => setGeneratedCopy(e.target.value)}
-              rows={10}
-              className="font-sans"
-            />
-          </div>
+          <Button size="sm" variant="ghost" onClick={copyCopy} className="h-7 px-2 text-xs">
+            <Copy className="w-3 h-3 mr-1" />
+            Copiar
+          </Button>
         )}
       </div>
+
+      <Button onClick={generateCopy} disabled={isGenerating} className="w-full h-8 text-xs" size="sm">
+        {isGenerating ? (
+          <>
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            Gerando...
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            Gerar Copy
+          </>
+        )}
+      </Button>
+
+      {generatedCopy && (
+        <Textarea
+          value={generatedCopy}
+          onChange={(e) => setGeneratedCopy(e.target.value)}
+          rows={8}
+          className="font-sans text-xs"
+        />
+      )}
     </div>
   );
 };
