@@ -626,7 +626,7 @@ export const VideoPreview = () => {
         </div>
       </div>
       <div className="relative w-full h-full flex items-center justify-center p-8">
-        <div className="relative" style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}>
+        <div className="relative" style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s', containerType: 'size' } as any}>
           <canvas
             id="preview-canvas"
             ref={canvasRef}
