@@ -90,7 +90,7 @@ export const VideoPreview = () => {
     } else {
       stopAllAudio();
     }
-  }, [currentTime, clips, mediaItems, isPlaying, trackStates]);
+  }, [currentTime, clips, mediaItems, isPlaying, trackStates, thumbnailData]);
 
   const ensureAudioContext = (): AudioContext | null => {
     if (!audioContextRef.current) {
