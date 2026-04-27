@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { useEditorStore } from "@/store/editorStore";
+import { useEditorStore, type MediaItem } from "@/store/editorStore";
 import { Button } from "@/components/ui/button";
 
 export const VideoPreview = () => {
@@ -17,33 +17,41 @@ export const VideoPreview = () => {
   const lastRenderTimeRef = useRef<number>(0);
 
   // Resolve a drawable element for a media item (preloads images from URL strings)
-  const getDrawable = (item: { type: 'image' | 'video' | 'audio'; data: any }): HTMLImageElement | HTMLVideoElement | null => {
+  const getDrawable = (item?: Pick<MediaItem, 'type' | 'data' | 'thumbnail'>): HTMLImageElement | HTMLVideoElement | null => {
     if (!item) return null;
 
-    if (item.type === 'image') {
+    if (item.type === 'image' || item.type === 'video') {
       const data = item.data;
+      const fallbackSource = typeof item.thumbnail === 'string' ? item.thumbnail : null;
+
       // Already an HTMLImageElement and loaded
       if (data instanceof HTMLImageElement) {
         if (!data.complete || data.naturalWidth === 0 || data.naturalHeight === 0) return null;
         return data;
       }
+
+      if (item.type === 'video' && data instanceof HTMLVideoElement) {
+        return data as HTMLVideoElement;
+      }
+
       // If it's a string URL, try to load without CORS for preview
-      if (typeof data === 'string') {
-        const cached = imageCacheRef.current.get(data);
+      const source = typeof data === 'string' ? data : fallbackSource;
+      if (source) {
+        const cached = imageCacheRef.current.get(source);
         if (cached && cached.complete && cached.naturalWidth > 0) {
           return cached;
         }
         // Try to load without CORS restrictions for preview
         const img = new Image();
         img.onload = () => {
-          imageCacheRef.current.set(data, img);
+          imageCacheRef.current.set(source, img);
           forceRerender((t) => t + 1);
         };
         img.onerror = () => {
-          console.warn('Failed to load image for preview:', data);
+          console.warn('Failed to load image for preview:', source);
         };
-        img.src = data;
-        imageCacheRef.current.set(data, img);
+        img.src = source;
+        imageCacheRef.current.set(source, img);
         // Return immediately if dimensions are available, even if not complete
         if (img.naturalWidth > 0 || img.width > 0) {
           return img;
@@ -51,10 +59,6 @@ export const VideoPreview = () => {
         return null;
       }
       return null;
-    }
-
-    if (item.type === 'video' && item.data instanceof HTMLVideoElement) {
-      return item.data as HTMLVideoElement;
     }
 
     return null;
@@ -465,8 +469,8 @@ export const VideoPreview = () => {
     if (trackState?.hidden) return;
 
     const mediaItem = mediaItems.find(m => m.id === currentClip.mediaId);
-    if (!mediaItem || !mediaItem.data) {
-      console.warn('Media item not found or has no data:', currentClip.mediaId);
+    if (!mediaItem) {
+      console.warn('Media item not found:', currentClip.mediaId);
       return;
     }
 

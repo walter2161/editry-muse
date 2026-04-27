@@ -6,7 +6,7 @@ const EXPIRY_KEY = 'video-editor-autosave-expiry';
 const EXPIRY_HOURS = 24;
 
 export const useAutoSave = () => {
-  const { clips, globalSettings } = useEditorStore();
+  const { clips, globalSettings, mediaItems } = useEditorStore();
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -34,7 +34,7 @@ export const useAutoSave = () => {
             store.loadProject({
               clips: data.clips,
               globalSettings: data.globalSettings,
-              mediaItems: [], // Can't restore media items (binary data)
+              mediaItems: data.mediaItems || [],
               projectName: store.projectName
             });
             
@@ -55,10 +55,17 @@ export const useAutoSave = () => {
 
   // Save to localStorage when state changes
   useEffect(() => {
-    // Only save clips and settings (not mediaItems since they contain large binary data)
+    // Salva clips, settings e metadados leves das mídias para o preview poder reidratar miniaturas
     const data = {
       clips,
       globalSettings,
+      mediaItems: mediaItems.map((item) => ({
+        id: item.id,
+        type: item.type,
+        name: item.name,
+        duration: item.duration,
+        thumbnail: item.thumbnail,
+      })),
     };
 
     const expiryTime = Date.now() + (EXPIRY_HOURS * 60 * 60 * 1000);
@@ -70,7 +77,7 @@ export const useAutoSave = () => {
       console.warn('Failed to save to localStorage:', error);
       // Silently fail - don't crash the app
     }
-  }, [clips, globalSettings]);
+  }, [clips, globalSettings, mediaItems]);
 
   return null;
 };
