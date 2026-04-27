@@ -444,7 +444,7 @@ export const VideoPreview = () => {
     const videoClips = clips.filter(c => c.track.startsWith('V')).sort((a, b) => a.start - b.start);
     
     const currentClip = videoClips.find(
-      c => c.start <= time && c.start + c.duration > time
+      c => c.start <= adjustedTime && c.start + c.duration > adjustedTime
     );
 
     if (!currentClip) return;
@@ -462,7 +462,7 @@ export const VideoPreview = () => {
     // Suporte para vídeo e imagem
     const media = getDrawable(mediaItem);
     if (!media) return;
-    const timeInClip = time - currentClip.start;
+    const timeInClip = adjustedTime - currentClip.start;
     const transitionDuration = currentClip.transitionDuration || 500;
     
     // Calcular progress contínuo do clipe (0 a 1 ao longo da duração total)
