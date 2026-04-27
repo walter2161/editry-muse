@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 export const VideoPreview = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
+  // Múltiplos sources tocando ao mesmo tempo (chave = nome da trilha: A1, A2, ...)
+  const activeAudioSourcesRef = useRef<Map<string, { source: AudioBufferSourceNode; gain: GainNode; clipId: string }>>(new Map());
   const { clips, mediaItems, currentTime, isPlaying, globalSettings, trackStates, thumbnailData } = useEditorStore();
   const [zoom, setZoom] = useState(1);
   const [, forceRerender] = useState(0);
