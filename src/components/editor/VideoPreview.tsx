@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useEditorStore, type MediaItem } from "@/store/editorStore";
 import { Button } from "@/components/ui/button";
+import { drawThumbnailOverlay } from "@/lib/thumbnailRenderer";
 
 export const VideoPreview = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
