@@ -95,8 +95,8 @@ REGRAS:
               content: prompt,
             },
           ],
-          temperature: 0.7,
-          max_tokens: 500,
+          temperature: 0.75,
+          max_tokens: 1400,
         }),
       });
 
