@@ -14,7 +14,24 @@ const parseCurrencyValue = (text: string): number | undefined => {
   const match = text.match(/R\$\s*([\d.]+(?:,\d{2})?)/i);
   if (!match) return undefined;
 
-  const value = Number(match[1].replace(/\./g, '').replace(',', '.'));
+  const raw = match[1].trim();
+  let normalized = raw;
+
+  if (raw.includes(',') && raw.includes('.')) {
+    normalized = raw.replace(/\./g, '').replace(',', '.');
+  } else if (raw.includes(',')) {
+    normalized = raw.replace(',', '.');
+  } else {
+    const dotCount = (raw.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      normalized = raw.replace(/\./g, '');
+    } else if (dotCount === 1) {
+      const [, decimals = ''] = raw.split('.');
+      normalized = decimals.length === 2 ? raw : raw.replace(/\./g, '');
+    }
+  }
+
+  const value = Number(normalized);
   return Number.isFinite(value) && value > 0 ? value : undefined;
 };
 
