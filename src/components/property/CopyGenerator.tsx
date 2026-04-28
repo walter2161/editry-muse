@@ -21,32 +21,65 @@ export const CopyGenerator = () => {
     setIsGenerating(true);
 
     try {
-      const prompt = `Crie uma copy persuasiva e atraente para um post de rede social (Instagram/TikTok) sobre este imóvel:
+    const prompt = `Crie uma copy COMPLETA, RICA E PERSUASIVA para um post de Instagram/Facebook/TikTok sobre este imóvel. A copy deve ser longa e profissional (entre 180 e 260 palavras) usando todos os dados disponíveis.
 
+═══ DADOS DO IMÓVEL ═══
 Tipo: ${propertyData.tipo}
 Transação: ${propertyData.transacao}
-Referência: ${propertyData.referencia || ''}
-Localização: ${propertyData.bairro}, ${propertyData.cidade}/${propertyData.estado}
-Características: ${propertyData.quartos} quartos, ${propertyData.banheiros} banheiros, ${propertyData.vagas} vagas, ${propertyData.area}m²
+Código de referência: ${propertyData.referencia || '-'}
+
+═══ LOCALIZAÇÃO ═══
+Bairro: ${propertyData.bairro}
+Cidade/Estado: ${propertyData.cidade}/${propertyData.estado}
+
+═══ CARACTERÍSTICAS ═══
+Quartos: ${propertyData.quartos}
+Banheiros: ${propertyData.banheiros}
+Vagas de garagem: ${propertyData.vagas}
+Área útil: ${propertyData.area}m²
+${propertyData.areaTerreno ? `Área do terreno: ${propertyData.areaTerreno}m²` : ''}
+
+═══ VALORES ═══
 Valor: R$ ${propertyData.valor.toLocaleString('pt-BR')}
-${propertyData.valorEntrada ? `Entrada: R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')}` : ''}
-${propertyData.condominio ? `Condomínio: R$ ${propertyData.condominio.toLocaleString('pt-BR')}` : ''}
-Diferenciais: ${propertyData.diferenciais.join(', ') || 'Nenhum informado'}
-${propertyData.descricaoAdicional ? `Observações: ${propertyData.descricaoAdicional}` : ''}
+${propertyData.valorEntrada ? `Entrada facilitada: R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')}` : ''}
+${propertyData.condominio ? `Condomínio: R$ ${propertyData.condominio.toLocaleString('pt-BR')}/mês` : ''}
+${propertyData.iptu ? `IPTU: R$ ${propertyData.iptu.toLocaleString('pt-BR')}/ano` : ''}
 
-Corretor/Imobiliária: ${propertyData.nomeCorretor}
-Contato: ${propertyData.telefoneCorretor}
-${propertyData.creci ? `CRECI: ${propertyData.creci}` : ''}
+═══ DIFERENCIAIS ═══
+${propertyData.diferenciais.length ? propertyData.diferenciais.map(d => `• ${d}`).join('\n') : '• Imóvel de qualidade'}
 
-A copy deve:
-- Ser curta e impactante (máximo 150 palavras)
-- Usar emojis estrategicamente
-- Destacar os principais diferenciais
-- Incluir código de referência (REF: ${propertyData.referencia || ''})
-- Criar senso de urgência
-- Incluir call-to-action forte
-- OBRIGATÓRIO: Incluir o CRECI (${propertyData.creci || 'CRECI: 25571-J'}) no final da copy
-- Incluir hashtags relevantes (#imoveis #${propertyData.cidade.toLowerCase()})`;
+═══ OBSERVAÇÕES EXTRAS ═══
+${propertyData.descricaoAdicional || '-'}
+
+═══ EMPRESA / CORRETOR ═══
+Nome: ${propertyData.nomeCorretor}
+WhatsApp: ${propertyData.telefoneCorretor || '(entre em contato pela bio)'}
+${propertyData.creci || 'CRECI: 25571-J'}
+
+═══ ESTRUTURA OBRIGATÓRIA DA COPY ═══
+
+1) Linha 1: HEADLINE com 1-2 emojis e uma chamada de impacto que mencione o tipo, a transação e o bairro.
+2) Linha em branco.
+3) Parágrafo de APRESENTAÇÃO (3-4 frases): descreva o imóvel com adjetivos vendedores, cite localização completa (bairro, cidade/estado).
+4) Linha em branco.
+5) Bloco "🔎 O QUE ESSE IMÓVEL OFERECE:" com lista bullet (✅ ou 🛏️ 🚿 🚗 📐) cobrindo TODOS os números (quartos, banheiros, vagas, área) e TODOS os diferenciais um por um.
+6) Linha em branco.
+7) Bloco "💰 CONDIÇÕES:" listando valor, entrada (se houver), condomínio (se houver), IPTU (se houver) e a frase "Aceita financiamento bancário 🏦".
+8) Linha em branco.
+9) Parágrafo "📍 LOCALIZAÇÃO:" com 1-2 frases sobre o bairro/cidade.
+10) Linha em branco.
+11) CTA forte com WhatsApp: "📲 Chame agora no WhatsApp ${propertyData.telefoneCorretor || '(coloque seu número)'} e agende sua visita!"
+12) Linha em branco.
+13) Bloco de assinatura da empresa: "🏠 ${propertyData.nomeCorretor}" + linha "📋 REF.: ${propertyData.referencia || ''}" + linha "${propertyData.creci || 'CRECI: 25571-J'}"
+14) Linha em branco.
+15) Linha de hashtags relevantes (8-12): #imoveis #${propertyData.cidade.toLowerCase().replace(/\s+/g, '')} #${propertyData.bairro.toLowerCase().replace(/\s+/g, '')} #${propertyData.tipo.toLowerCase()} #${propertyData.transacao.toLowerCase()}imoveis #imobiliaria #realestate #investimento #${propertyData.cidade.toLowerCase().replace(/\s+/g, '')}imoveis e variações.
+
+REGRAS:
+- Use TODOS os dados fornecidos, não invente nada
+- Tom profissional, entusiasmado e humano
+- Emojis estratégicos, sem exagero
+- NUNCA omita o CRECI nem o nome da empresa
+- Retorne APENAS o texto final pronto para colar, sem aspas envolvendo, sem comentários`;
 
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
