@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useEditorStore, type MediaItem } from "@/store/editorStore";
 import { Button } from "@/components/ui/button";
+import { drawThumbnailOverlay } from "@/lib/thumbnailRenderer";
 
 export const VideoPreview = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -310,138 +311,8 @@ export const VideoPreview = () => {
       ctx.drawImage(media, imgProps.offsetX, imgProps.offsetY, imgProps.drawWidth, imgProps.drawHeight);
     }
 
-    // Gradient overlay (escuro embaixo, transparente em cima)
-    const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
-    gradient.addColorStop(0, `rgba(0, 0, 0, ${thumbnailData.overlayOpacity * 0.55})`);
-    gradient.addColorStop(0.5, `rgba(0, 0, 0, ${thumbnailData.overlayOpacity * 0.15})`);
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Área 1x1 centralizada (65% de largura)
-    const squareSize = Math.min(canvas.width, canvas.height);
-    const areaWidth = squareSize * 0.65;
-    const areaHeight = areaWidth;
-    const areaX = (canvas.width - areaWidth) / 2;
-    const areaY = (canvas.height - areaHeight) / 2;
-    
-    const padding = areaWidth * 0.05;
-    const contentX = areaX + padding;
-    const contentY = areaY + areaHeight - padding;
-    const contentWidth = areaWidth - (padding * 2);
-
-    // Configurar text shadow para todos os textos
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 3;
-
-    const baseFontSize = areaWidth * 0.055;
-    const lineHeight = baseFontSize * 1.2;
-    let currentY = contentY;
-
-    // Detalhes (de baixo para cima)
-    ctx.font = `600 ${baseFontSize * thumbnailData.textFontSize}px Inter, Arial, sans-serif`;
-    ctx.textAlign = 'center';
-
-    // Área
-    if (thumbnailData.area) {
-      ctx.fillStyle = thumbnailData.textColor;
-      ctx.fillText(`📐 ${thumbnailData.area}m² Área Útil`, contentX + contentWidth / 2, currentY);
-      currentY -= lineHeight * 1.3;
-    }
-
-    // Banheiros
-    if (thumbnailData.bathrooms) {
-      ctx.fillStyle = thumbnailData.textColor;
-      ctx.fillText(`🚿 ${thumbnailData.bathrooms} Banheiro${thumbnailData.bathrooms !== '1' ? 's' : ''}`, contentX + contentWidth / 2, currentY);
-      currentY -= lineHeight * 1.3;
-    }
-
-    // Quartos
-    if (thumbnailData.bedrooms) {
-      ctx.fillStyle = thumbnailData.textColor;
-      ctx.fillText(`🛏️ ${thumbnailData.bedrooms} Quarto${thumbnailData.bedrooms !== '1' ? 's' : ''}`, contentX + contentWidth / 2, currentY);
-      currentY -= lineHeight * 1.3;
-    }
-
-    // Localização
-    if (thumbnailData.location) {
-      ctx.fillStyle = thumbnailData.locationColor;
-      ctx.fillText(`📍 ${thumbnailData.location}`, contentX + contentWidth / 2, currentY);
-      currentY -= lineHeight * 1.8;
-    }
-
-    // Caixa de preço (background azul)
-    if (thumbnailData.price) {
-      const priceBoxHeight = baseFontSize * thumbnailData.priceFontSize * 2.2;
-      const priceBoxY = currentY - priceBoxHeight;
-      const priceBoxPadding = contentWidth * 0.08;
-      
-      // Desabilitar shadow para o box
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      
-      // Box background
-      ctx.fillStyle = thumbnailData.priceColor;
-      const radius = 10;
-      ctx.beginPath();
-      ctx.moveTo(contentX + priceBoxPadding + radius, priceBoxY);
-      ctx.lineTo(contentX + contentWidth - priceBoxPadding - radius, priceBoxY);
-      ctx.quadraticCurveTo(contentX + contentWidth - priceBoxPadding, priceBoxY, contentX + contentWidth - priceBoxPadding, priceBoxY + radius);
-      ctx.lineTo(contentX + contentWidth - priceBoxPadding, priceBoxY + priceBoxHeight - radius);
-      ctx.quadraticCurveTo(contentX + contentWidth - priceBoxPadding, priceBoxY + priceBoxHeight, contentX + contentWidth - priceBoxPadding - radius, priceBoxY + priceBoxHeight);
-      ctx.lineTo(contentX + priceBoxPadding + radius, priceBoxY + priceBoxHeight);
-      ctx.quadraticCurveTo(contentX + priceBoxPadding, priceBoxY + priceBoxHeight, contentX + priceBoxPadding, priceBoxY + priceBoxHeight - radius);
-      ctx.lineTo(contentX + priceBoxPadding, priceBoxY + radius);
-      ctx.quadraticCurveTo(contentX + priceBoxPadding, priceBoxY, contentX + priceBoxPadding + radius, priceBoxY);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Box shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-      ctx.shadowBlur = 15;
-      ctx.fill();
-      
-      // Reativar text shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 3;
-      
-      // Preço
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `900 ${baseFontSize * thumbnailData.priceFontSize * 1.1}px Inter, Arial, sans-serif`;
-      ctx.fillText(thumbnailData.price, contentX + contentWidth / 2, priceBoxY + priceBoxHeight * 0.5);
-      
-      // Label do preço
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.font = `400 ${baseFontSize * thumbnailData.priceFontSize * 0.45}px Inter, Arial, sans-serif`;
-      ctx.fillText('Oportunidade Única!', contentX + contentWidth / 2, priceBoxY + priceBoxHeight * 0.82);
-      
-      currentY = priceBoxY - lineHeight * 0.8;
-    }
-
-    // REF
-    if (thumbnailData.referencia) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.font = `500 ${baseFontSize * thumbnailData.textFontSize * 0.95}px Inter, Arial, sans-serif`;
-      ctx.fillText(`REF.: ${thumbnailData.referencia}`, contentX + contentWidth / 2, currentY);
-      currentY -= lineHeight * 1.2;
-    }
-
-    // Título
-    if (thumbnailData.title) {
-      ctx.fillStyle = thumbnailData.titleColor;
-      ctx.font = `700 ${baseFontSize * thumbnailData.titleFontSize * 1.1}px Inter, Arial, sans-serif`;
-      const titleUpper = thumbnailData.title.toUpperCase();
-      ctx.fillText(titleUpper, contentX + contentWidth / 2, currentY);
-    }
-
-    // Resetar shadow
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+    // Layout unificado da thumbnail (ver src/lib/thumbnailRenderer.ts)
+    drawThumbnailOverlay({ ctx, canvas, data: thumbnailData });
   };
 
   const renderFrame = (ctx: CanvasRenderingContext2D, time: number) => {

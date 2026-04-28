@@ -144,43 +144,60 @@ export const ScriptPanel = () => {
       const inicioEscolhido = iniciosCordiais[Math.floor(Math.random() * iniciosCordiais.length)];
       const fimEscolhido = finaisChamada[Math.floor(Math.random() * finaisChamada.length)];
 
-      const prompt = `Crie um roteiro profissional para narração de vídeo sobre este imóvel para redes sociais (TikTok/Instagram Reels).
+      const prompt = `Crie um roteiro RICO E DETALHADO para narração de vídeo de 55-59 segundos sobre este imóvel para redes sociais (TikTok/Instagram Reels).
 
-DADOS DO IMÓVEL (USE TODOS ESTES DADOS NO ROTEIRO):
+DADOS DO IMÓVEL (USE TODOS, SEM OMITIR NENHUM):
 - Tipo: ${propertyData.tipo}
 - Transação: ${propertyData.transacao}
+- Referência: ${propertyData.referencia || 'sem código'}
 - Localização: ${propertyData.bairro}, ${propertyData.cidade}/${propertyData.estado}
 - Quartos: ${propertyData.quartos}
 - Banheiros: ${propertyData.banheiros}
 - Vagas: ${propertyData.vagas}
-- Área: ${propertyData.area}m²
+- Área útil: ${propertyData.area}m²
+${propertyData.areaTerreno ? `- Área do terreno: ${propertyData.areaTerreno}m²` : ''}
 - Valor: R$ ${propertyData.valor.toLocaleString('pt-BR')}
-${propertyData.condominio ? `- Condomínio: R$ ${propertyData.condominio.toLocaleString('pt-BR')}` : ''}
-- Diferenciais: ${propertyData.diferenciais.join(', ') || 'Imóvel de qualidade'}
+${propertyData.valorEntrada ? `- Entrada: R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')}` : ''}
+${propertyData.condominio ? `- Condomínio: R$ ${propertyData.condominio.toLocaleString('pt-BR')}/mês` : ''}
+${propertyData.iptu ? `- IPTU: R$ ${propertyData.iptu.toLocaleString('pt-BR')}/ano` : ''}
+- Diferenciais: ${propertyData.diferenciais.join(', ') || 'imóvel de qualidade'}
+${propertyData.descricaoAdicional ? `- Observações extras: ${propertyData.descricaoAdicional}` : ''}
+- Imobiliária: ${propertyData.nomeCorretor}
+${propertyData.creci ? `- ${propertyData.creci}` : ''}
 
-ESTRUTURA OBRIGATÓRIA DO ROTEIRO:
+ESTRUTURA OBRIGATÓRIA (deve ter ENTRE 160 E 200 PALAVRAS — nem menos, nem mais):
 
-1. INÍCIO (copie exatamente):
+1. ABERTURA (use literalmente):
 "${inicioEscolhido}"
 
-2. MEIO (crie 5-7 frases INCLUINDO OBRIGATORIAMENTE):
-- Mencione o tipo de imóvel (${propertyData.tipo})
-- Fale a localização completa (${propertyData.bairro}, ${propertyData.cidade}/${propertyData.estado})
-- Cite TODOS os números: ${propertyData.quartos} quartos, ${propertyData.banheiros} banheiros, ${propertyData.vagas} vagas, ${propertyData.area}m²
-- Mencione o valor: R$ ${propertyData.valor.toLocaleString('pt-BR')}
-${propertyData.condominio ? `- Fale do condomínio: R$ ${propertyData.condominio.toLocaleString('pt-BR')}` : ''}
-- Destaque os diferenciais: ${propertyData.diferenciais.join(', ')}
-- Use linguagem natural, entusiasmada e conversacional
+2. APRESENTAÇÃO DO IMÓVEL (3-4 frases):
+- Diga o tipo, a transação e a localização completa (bairro, cidade e estado)
+- Cite o código de referência
+- Construa um clima de oportunidade
 
-3. FIM (copie exatamente):
+3. DETALHAMENTO TÉCNICO (4-5 frases — CAUDA LONGA, descreva com riqueza):
+- Quartos, banheiros, vagas e área útil — descreva os ambientes com adjetivos (amplo, arejado, bem distribuído, planejado)
+- Mencione TODOS os diferenciais um a um, explicando rapidamente o benefício prático de cada um
+- Comente sobre a localização (proximidade de comércio, escolas, transporte se fizer sentido)
+
+4. CONDIÇÕES COMERCIAIS (2-3 frases):
+- Anuncie o valor com clareza
+${propertyData.valorEntrada ? '- Destaque a entrada facilitada' : ''}
+${propertyData.condominio ? '- Cite o condomínio' : ''}
+${propertyData.iptu ? '- Cite o IPTU' : ''}
+- Mencione que aceita financiamento bancário e/ou outras formas de negociação
+- Dê senso de urgência ("oportunidade rara", "não vai durar muito")
+
+5. ENCERRAMENTO (use literalmente):
 "${fimEscolhido}"
 
-REGRAS IMPORTANTES:
-- Retorne APENAS o texto corrido, sem títulos, marcações, asteriscos ou formatação
-- OBRIGATÓRIO incluir TODOS os dados técnicos listados acima
-- Entre 100-130 palavras total
-- Sem emojis ou hashtags
-- Tom profissional mas entusiasmado`;
+REGRAS CRÍTICAS:
+- Retorne APENAS o texto corrido da narração, sem títulos, sem marcações, sem asteriscos, sem listas
+- USE ENTRE 160 E 200 PALAVRAS (vídeo de ~58s falado em ritmo natural)
+- Use linguagem natural, conversacional, entusiasmada e profissional
+- Sem emojis, sem hashtags, sem ler "REF:" — diga "código" ou "referência"
+- Escreva valores por extenso quando for melhor ouvir (ex: "cento e sessenta e seis mil reais")
+- Não invente informações que não estão nos dados`;
 
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
@@ -196,8 +213,8 @@ REGRAS IMPORTANTES:
               content: prompt,
             },
           ],
-          temperature: 0.8,
-          max_tokens: 600,
+          temperature: 0.85,
+          max_tokens: 1000,
         }),
       });
 
