@@ -38,6 +38,11 @@ export const ThumbnailEditor = () => {
     setIsOpen(open);
   };
 
+  // Manter formData sincronizado quando thumbnailData mudar (ex: novo imóvel escaneado)
+  useEffect(() => {
+    setFormData(thumbnailData);
+  }, [thumbnailData]);
+
   // Obter dimensões do canvas baseado no formato
   const getCanvasDimensions = () => {
     switch (globalSettings.videoFormat) {
