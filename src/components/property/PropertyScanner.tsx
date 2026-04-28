@@ -10,6 +10,22 @@ import { useNavigate } from 'react-router-dom';
 
 const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
 
+const parseCurrencyValue = (text: string): number | undefined => {
+  const match = text.match(/R\$\s*([\d.]+(?:,\d{2})?)/i);
+  if (!match) return undefined;
+
+  const value = Number(match[1].replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
+const isEntryContext = (label: string) => /\bentrada\b|\bsinal\b/.test(label);
+const isCondoContext = (label: string) => /condom[ií]nio|cond\.|taxa mensal/.test(label);
+const isIptuContext = (label: string) => /\biptu\b/.test(label);
+const isSaleContext = (label: string) => {
+  if (isEntryContext(label) || isCondoContext(label) || isIptuContext(label)) return false;
+  return /\bvenda\b|\bvalor\b|valor total|valor do im[oó]vel|\bpre[cç]o\b/.test(label);
+};
+
 export const PropertyScanner = () => {
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -67,6 +83,81 @@ export const PropertyScanner = () => {
     let salePrice: number | undefined;
     let entryPrice: number | undefined;
     let condoPrice: number | undefined;
+
+    // 1) Priorizar fontes estruturadas e linhas rotuladas, evitando pegar preço de outros cards/imóveis.
+    const structuredPriceSelectors = [
+      'meta[property="product:price:amount"]',
+      'meta[itemprop="price"]',
+      '[itemprop="price"]',
+      '[data-price]',
+    ];
+
+    for (const selector of structuredPriceSelectors) {
+      const el = doc.querySelector(selector);
+      const raw = el?.getAttribute('content') || el?.getAttribute('value') || el?.getAttribute('data-price') || el?.textContent || '';
+      const parsed = parseCurrencyValue(raw.includes('R$') ? raw : `R$ ${raw}`);
+      if (parsed && !salePrice) {
+        salePrice = parsed;
+        break;
+      }
+    }
+
+    if (!salePrice) {
+      const jsonLdScripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
+      for (const script of jsonLdScripts) {
+        try {
+          const parsed = JSON.parse(script.textContent || 'null');
+          const nodes = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed?.['@graph'])
+              ? parsed['@graph']
+              : [parsed];
+
+          for (const node of nodes) {
+            const offerPrice = node?.offers?.price ?? node?.price;
+            const candidate = typeof offerPrice === 'number'
+              ? offerPrice
+              : typeof offerPrice === 'string'
+                ? parseCurrencyValue(offerPrice.includes('R$') ? offerPrice : `R$ ${offerPrice}`)
+                : undefined;
+
+            if (candidate) {
+              salePrice = candidate;
+              break;
+            }
+          }
+        } catch {
+          // ignora blocos inválidos
+        }
+
+        if (salePrice) break;
+      }
+    }
+
+    const labeledRows = Array.from(doc.querySelectorAll('tr, .detail, .row, li, .item'));
+    for (const row of labeledRows) {
+      const labelEl = row.querySelector('.type, .label, th, td.type, dt, strong');
+      const valueEl = row.querySelector('.value, .price, .valor, td.value, dd') || labelEl?.nextElementSibling;
+      const label = (labelEl?.textContent || '').trim().toLowerCase();
+      const valueText = (valueEl?.textContent || row.textContent || '').trim();
+      const parsed = parseCurrencyValue(valueText);
+
+      if (!label || !parsed) continue;
+
+      if (isCondoContext(label) && !condoPrice && parsed < 10000) {
+        condoPrice = parsed;
+        continue;
+      }
+
+      if (isEntryContext(label) && !entryPrice) {
+        entryPrice = parsed;
+        continue;
+      }
+
+      if (isSaleContext(label) && !salePrice) {
+        salePrice = parsed;
+      }
+    }
     
     // Coletar todos os preços com seus contextos
     const pricesFound: { price: number; context: string; isEntradaExplicita: boolean; isTotalExplicito: boolean }[] = [];
@@ -136,7 +227,7 @@ export const PropertyScanner = () => {
     
     // Terceiro: identificar valor total
     // Se encontramos entrada explícita, procurar por valor total explícito também
-    if (entryPrice) {
+    if (!salePrice && entryPrice) {
       for (const { price, isTotalExplicito } of pricesFound) {
         if (isTotalExplicito && price > entryPrice && price !== condoPrice && !salePrice) {
           salePrice = price;
@@ -153,7 +244,7 @@ export const PropertyScanner = () => {
           salePrice = Math.max(...candidates);
         }
       }
-    } else {
+    } else if (!salePrice) {
       // Sem entrada identificada, pegar o maior valor significativo como preço de venda
       const candidates = pricesFound
         .filter(p => p.price > 10000 && p.price !== condoPrice)
