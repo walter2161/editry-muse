@@ -15,17 +15,14 @@ const VideoEditor = () => {
   
   // Sincronizar dados do imóvel com a thumbnail sempre que propertyData mudar
   useEffect(() => {
-    if (propertyData && propertyData.cidade) {
+    if (propertyData) {
       const bedrooms = propertyData.quartos ? `${propertyData.quartos}` : '';
       const bathrooms = propertyData.banheiros ? `${propertyData.banheiros}` : '';
       const area = propertyData.area ? `${propertyData.area}` : '';
       
-      // Formatar preço - inteligente para entrada e valor total
+      // Thumb deve sempre mostrar o valor real do imóvel, nunca a entrada
       let price = '';
-      if (propertyData.valorEntrada && propertyData.valor) {
-        // Se tem entrada, mostrar entrada destacada
-        price = `Entrada R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')}`;
-      } else if (propertyData.valor) {
+      if (propertyData.valor) {
         if (propertyData.transacao === 'Venda') {
           price = `R$ ${propertyData.valor.toLocaleString('pt-BR')}`;
         } else {
