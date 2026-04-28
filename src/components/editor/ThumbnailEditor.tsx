@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { useEditorStore } from "@/store/editorStore";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { drawThumbnailOverlay } from "@/lib/thumbnailRenderer";
 
 export const ThumbnailEditor = () => {
   const { thumbnailData, updateThumbnailData, clips, mediaItems, globalSettings } = useEditorStore();
