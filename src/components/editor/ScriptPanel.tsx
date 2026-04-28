@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Captions, RefreshCw, Pencil, Mic } from 'lucide-react';
@@ -19,6 +19,10 @@ export const ScriptPanel = () => {
   const { addClip, addMediaItem, clips, updateTotalDuration, globalSettings } = useEditorStore();
   const { propertyData } = usePropertyStore();
   const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
+
+  useEffect(() => {
+    setScript('');
+  }, [propertyData?.referencia, propertyData?.valor, propertyData?.bairro, propertyData?.cidade]);
 
   const generateVoiceover = async () => {
     const store = useEditorStore.getState();
