@@ -7,8 +7,8 @@ import { Loader2, Search } from 'lucide-react';
 import { usePropertyStore, PropertyData } from '@/store/propertyStore';
 import { useEditorStore, MediaItem } from '@/store/editorStore';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
-const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
 
 const parseCurrencyValue = (text: string): number | undefined => {
   const match = text.match(/R\$\s*([\d.]+(?:,\d{2})?)/i);
@@ -405,89 +405,14 @@ export const PropertyScanner = () => {
 
   const generateCopyWithAI = async (propertyData: Partial<PropertyData>) => {
     try {
-      // Construir texto de valores inteligente
-      let valorTexto = '';
-      if (propertyData.valorEntrada && propertyData.valor) {
-        valorTexto = `Entrada: R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')} | Valor Total: R$ ${propertyData.valor.toLocaleString('pt-BR')}`;
-      } else if (propertyData.valor) {
-        valorTexto = `R$ ${propertyData.valor.toLocaleString('pt-BR')}`;
-      }
-
-      const prompt = `Com base nas informações do imóvel abaixo, crie uma copy persuasiva e atraente para um post de rede social (Instagram/TikTok):
-
-Tipo: ${propertyData.tipo || 'Imóvel'}
-Transação: ${propertyData.transacao || 'Venda'}
-Referência: ${propertyData.referencia || ''}
-Localização: ${propertyData.bairro}, ${propertyData.cidade}/${propertyData.estado}
-Características: ${propertyData.quartos} quartos, ${propertyData.banheiros} banheiros, ${propertyData.vagas} vagas${propertyData.area ? `, ${propertyData.area}m²` : ''}
-${valorTexto ? `Valores: ${valorTexto}` : ''}
-${propertyData.valorEntrada ? `IMPORTANTE: Este imóvel tem valor de entrada de R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')} - destaque isso como facilidade de pagamento!` : ''}
-${propertyData.diferenciais && propertyData.diferenciais.length > 0 ? `Diferenciais: ${propertyData.diferenciais.join(', ')}` : ''}
-${propertyData.descricaoAdicional ? `Descrição: ${propertyData.descricaoAdicional}` : ''}
-
-A copy deve:
-- Ser curta e impactante (máximo 150 palavras)
-- Usar emojis estrategicamente
-- Destacar os principais diferenciais
-${propertyData.valorEntrada ? '- DESTACAR que aceita entrada facilitada e o valor da entrada' : ''}
-- Incluir código de referência (REF: ${propertyData.referencia || ''})
-- Criar senso de urgência
-- Incluir call-to-action forte
-- Incluir hashtags relevantes (#imoveis #${propertyData.cidade?.toLowerCase()})`;
-
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${MISTRAL_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'mistral-small-latest',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 500,
-        }),
+      const { data, error } = await supabase.functions.invoke('mistral-generate', {
+        body: { mode: 'copy', property: propertyData },
       });
-
-      if (!response.ok) throw new Error('Erro ao gerar copy');
-
-      const data = await response.json();
-      return data.choices[0].message.content;
+      if (error) throw error;
+      return (data?.text || '').trim();
     } catch (error) {
       console.error('Erro ao gerar copy:', error);
-      const cidade = propertyData.cidade || '';
-      const bairro = propertyData.bairro || '';
-      const tipo = propertyData.tipo || 'Imóvel';
-      const transacao = propertyData.transacao || 'Venda';
-      
-      // Construir texto de valor inteligente para fallback
-      let valorText = '';
-      if (propertyData.valorEntrada && propertyData.valor) {
-        valorText = `💰 Entrada: R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')}\n💵 Valor Total: R$ ${propertyData.valor.toLocaleString('pt-BR')}`;
-      } else if (propertyData.valor) {
-        valorText = `por R$ ${propertyData.valor.toLocaleString('pt-BR')}`;
-      }
-      
-      const caracts = [
-        propertyData.quartos ? `${propertyData.quartos} quartos` : null,
-        propertyData.banheiros ? `${propertyData.banheiros} banheiros` : null,
-        propertyData.vagas ? `${propertyData.vagas} vagas` : null,
-        propertyData.area ? `${propertyData.area}m²` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ');
-
-      const difs = propertyData.diferenciais && propertyData.diferenciais.length
-        ? `Destaques: ${propertyData.diferenciais.slice(0, 5).join(', ')}.\n`
-        : '';
-
-      const entradaDestaque = propertyData.valorEntrada 
-        ? `\n\n🎯 ENTRADA FACILITADA!`
-        : '';
-
-      const ref = propertyData.referencia ? `\n\n📋 REF: ${propertyData.referencia}` : '';
-      const fallback = `✨ ${tipo} para ${transacao} em ${bairro} · ${cidade}\n\n${caracts}\n${valorText}${entradaDestaque}\n${difs}\nCorra! Oportunidade única com excelente localização. Fale agora e agende sua visita! 📲${ref}\n\n#imoveis #${cidade.toLowerCase()}`;
-      return fallback;
+      return '';
     }
   };
 
@@ -533,10 +458,26 @@ ${propertyData.valorEntrada ? '- DESTACAR que aceita entrada facilitada e o valo
       
       const html = await response.text();
 
+      // Texto/markdown via Jina pra alimentar a IA com a descrição completa do imóvel
+      let pageContext = '';
+      try {
+        const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
+        const jr = await fetch(jinaUrl);
+        if (jr.ok) pageContext = (await jr.text()).slice(0, 12000);
+      } catch {}
+      if (!pageContext) {
+        try {
+          const tmp = new DOMParser().parseFromString(html, 'text/html');
+          tmp.querySelectorAll('script,style,nav,footer,header').forEach(el => el.remove());
+          pageContext = (tmp.body?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 12000);
+        } catch {}
+      }
+
       toast({
         title: 'Extraindo dados...',
         description: 'Lendo informações do imóvel',
       });
+
 
       // Extrair dados diretamente do HTML (rápido)
       const extractedData = extractPropertyDataFromHTML(html);
@@ -560,16 +501,20 @@ ${propertyData.valorEntrada ? '- DESTACAR que aceita entrada facilitada e o valo
         valorEntrada: extractedData.valorEntrada,
         diferenciais: extractedData.diferenciais || [],
         descricaoAdicional: extractedData.descricaoAdicional || '',
-        nomeCorretor: extractedData.nomeCorretor || '',
+        nomeCorretor: extractedData.nomeCorretor || 'Vendebens Imóveis',
         telefoneCorretor: extractedData.telefoneCorretor || '',
-        creci: extractedData.creci,
+        creci: extractedData.creci || 'CRECI: 25571-J',
         condominio: extractedData.condominio,
         iptu: extractedData.iptu,
         areaTerreno: extractedData.areaTerreno,
+        pageContext,
+        url: cleanUrl,
       };
 
+      // Limpar copy do imóvel anterior antes de salvar o novo
+      setGeneratedCopy('');
       setPropertyData(finalData);
-      
+
       // Limpar timeline e mídia antes de adicionar novas imagens
       clearTimelineAndMedia();
       
