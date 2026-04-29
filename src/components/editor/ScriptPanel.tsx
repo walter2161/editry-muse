@@ -8,7 +8,7 @@ import { usePropertyStore } from '@/store/propertyStore';
 import { SubtitleEditorDialog } from './SubtitleEditorDialog';
 import { supabase } from '@/integrations/supabase/client';
 
-const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
+
 
 export const ScriptPanel = () => {
   const [script, setScript] = useState('');
