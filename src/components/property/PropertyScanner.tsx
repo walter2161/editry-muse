@@ -7,8 +7,8 @@ import { Loader2, Search } from 'lucide-react';
 import { usePropertyStore, PropertyData } from '@/store/propertyStore';
 import { useEditorStore, MediaItem } from '@/store/editorStore';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
-const MISTRAL_API_KEY = 'aynCSftAcQBOlxmtmpJqVzco8K4aaTDQ';
 
 const parseCurrencyValue = (text: string): number | undefined => {
   const match = text.match(/R\$\s*([\d.]+(?:,\d{2})?)/i);
