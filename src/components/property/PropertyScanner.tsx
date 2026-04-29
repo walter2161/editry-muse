@@ -43,6 +43,53 @@ const isSaleContext = (label: string) => {
   return /\bvenda\b|\bvalor\b|valor total|valor do im[oó]vel|\bpre[cç]o\b/.test(label);
 };
 
+const extractPropertyDataFromText = (text: string): Partial<PropertyData> => {
+  const normalized = text.replace(/\r/g, '').replace(/\u00a0/g, ' ');
+  const data: Partial<PropertyData> = { diferenciais: [] };
+
+  const refMatch = normalized.match(/REF\.:?\s*([A-Z0-9-]+)/i);
+  if (refMatch) data.referencia = refMatch[1].trim();
+
+  const typeMatch = normalized.match(/\b(APARTAMENTO|CASA|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i);
+  if (typeMatch) data.tipo = typeMatch[1][0] + typeMatch[1].slice(1).toLowerCase();
+
+  if (/\bVENDA\b/i.test(normalized)) data.transacao = 'Venda';
+  else if (/\bALUGUEL\b|\bLOCAÇÃO\b/i.test(normalized)) data.transacao = 'Aluguel';
+
+  const locationMatch = normalized.match(/\n\s*([A-ZÀ-Ú0-9'´\- ]+)\s*-\s*([A-ZÀ-Ú'´\- ]+),\s*([A-Z]{2})\s*\n/i);
+  if (locationMatch) {
+    data.bairro = locationMatch[1].trim();
+    data.cidade = locationMatch[2].trim();
+    data.estado = locationMatch[3].trim();
+  }
+
+  const totalMatch = normalized.match(/(?:\bTotal\b|\bValor\b|\bPre[cç]o\b)[^\n]*R\$\s*([\d.]+(?:,\d{2})?)/i)
+    || normalized.match(/POR\s+R\$\s*([\d.]+(?:,\d{2})?)/i);
+  if (totalMatch) data.valor = parseCurrencyValue(`R$ ${totalMatch[1]}`) ?? 0;
+
+  const quartosMatch = normalized.match(/Quartos\s*\n\s*(\d+)/i);
+  if (quartosMatch) data.quartos = Number(quartosMatch[1]);
+  const vagasMatch = normalized.match(/Vagas\s*\n\s*(\d+)/i);
+  if (vagasMatch) data.vagas = Number(vagasMatch[1]);
+  const banheirosMatch = normalized.match(/Banheiro(?:s)?\s*\n\s*(\d+)/i);
+  if (banheirosMatch) data.banheiros = Number(banheirosMatch[1]);
+
+  const areaMatch = normalized.match(/Área Útil\s*\n\s*([\d.,]+)/i);
+  if (areaMatch) data.area = Number(areaMatch[1].replace(/\./g, '').replace(',', '.'));
+
+  const distMatch = normalized.match(/Dist[âa]ncia praia\s*\n\s*([^\n]+)/i);
+  const diferenciaisSection = normalized.match(/DIFERENCIAIS:\s*([\s\S]*?)\n\s*CARACTER[ÍI]STICAS/i)?.[1] || '';
+  const caracteristicasSection = normalized.match(/CARACTER[ÍI]STICAS\s*([\s\S]*?)\n\s*INFORMAÇÕES DE LOCALIZAÇÃO/i)?.[1] || '';
+  const extras = [
+    ...diferenciaisSection.split(/\n+/).map((item) => item.trim()),
+    ...caracteristicasSection.split(/\n+/).map((item) => item.trim()),
+    distMatch ? `Distância da praia: ${distMatch[1].trim()}` : '',
+  ].filter((item) => item && item.length > 2);
+  data.diferenciais = Array.from(new Set(extras)).slice(0, 20);
+
+  return data;
+};
+
 export const PropertyScanner = () => {
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -481,26 +528,27 @@ export const PropertyScanner = () => {
 
       // Extrair dados diretamente do HTML (rápido)
       const extractedData = extractPropertyDataFromHTML(html);
+      const extractedFromText = extractPropertyDataFromText(pageContext || html);
       
       // Extrair imagens
       const images = extractImages(html, url);
 
       // Mesclar com valores padrão
       const finalData: PropertyData = {
-        tipo: extractedData.tipo || 'Apartamento',
-        transacao: extractedData.transacao || 'Venda',
-        referencia,
-        bairro: extractedData.bairro || '',
-        cidade: extractedData.cidade || '',
-        estado: extractedData.estado || '',
-        quartos: extractedData.quartos ?? 0,
-        banheiros: extractedData.banheiros ?? 0,
-        vagas: extractedData.vagas ?? 0,
-        area: extractedData.area ?? 0,
-        valor: extractedData.valor ?? 0,
+        tipo: extractedFromText.tipo || extractedData.tipo || 'Apartamento',
+        transacao: extractedFromText.transacao || extractedData.transacao || 'Venda',
+        referencia: extractedFromText.referencia || referencia,
+        bairro: extractedFromText.bairro || extractedData.bairro || '',
+        cidade: extractedFromText.cidade || extractedData.cidade || '',
+        estado: extractedFromText.estado || extractedData.estado || '',
+        quartos: extractedFromText.quartos ?? extractedData.quartos ?? 0,
+        banheiros: extractedFromText.banheiros ?? extractedData.banheiros ?? 0,
+        vagas: extractedFromText.vagas ?? extractedData.vagas ?? 0,
+        area: extractedFromText.area ?? extractedData.area ?? 0,
+        valor: extractedFromText.valor ?? extractedData.valor ?? 0,
         valorEntrada: extractedData.valorEntrada,
-        diferenciais: extractedData.diferenciais || [],
-        descricaoAdicional: extractedData.descricaoAdicional || '',
+        diferenciais: extractedFromText.diferenciais?.length ? extractedFromText.diferenciais : (extractedData.diferenciais || []),
+        descricaoAdicional: extractedData.descricaoAdicional || pageContext.slice(0, 280) || '',
         nomeCorretor: extractedData.nomeCorretor || 'Vendebens Imóveis',
         telefoneCorretor: extractedData.telefoneCorretor || '',
         creci: extractedData.creci || 'CRECI: 25571-J',
