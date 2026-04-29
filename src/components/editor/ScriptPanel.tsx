@@ -20,8 +20,22 @@ export const ScriptPanel = () => {
   const { propertyData } = usePropertyStore();
   const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
 
+  const clearGeneratedAudioAndSubtitles = () => {
+    const store = useEditorStore.getState();
+    store.clips
+      .filter((clip) => clip.type === 'subtitle' || (clip.type === 'audio' && clip.track === 'A1' && clip.mediaId.startsWith('lmnt-')))
+      .forEach((clip) => store.removeClip(clip.id));
+
+    store.mediaItems
+      .filter((item) => item.id.startsWith('lmnt-'))
+      .forEach((item) => store.removeMediaItem(item.id));
+
+    store.updateTotalDuration();
+  };
+
   useEffect(() => {
     setScript('');
+    clearGeneratedAudioAndSubtitles();
   }, [propertyData?.referencia, propertyData?.valor, propertyData?.bairro, propertyData?.cidade]);
 
   const generateVoiceover = async () => {
