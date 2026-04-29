@@ -32,6 +32,10 @@ export interface PropertyData {
   nomeCorretor: string;
   telefoneCorretor: string;
   creci?: string;
+
+  // Contexto bruto extraído da página (markdown/texto), usado para enriquecer roteiros e copy
+  pageContext?: string;
+  url?: string;
 }
 
 interface PropertyState {
