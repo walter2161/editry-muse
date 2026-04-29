@@ -20,22 +20,16 @@ export const ScriptPanel = () => {
   const { propertyData } = usePropertyStore();
   const subtitleCount = clips.filter((c) => c.type === 'subtitle').length;
 
-  const clearGeneratedAudioAndSubtitles = () => {
+  useEffect(() => {
+    setScript('');
     const store = useEditorStore.getState();
     store.clips
       .filter((clip) => clip.type === 'subtitle' || (clip.type === 'audio' && clip.track === 'A1' && clip.mediaId.startsWith('lmnt-')))
       .forEach((clip) => store.removeClip(clip.id));
-
     store.mediaItems
       .filter((item) => item.id.startsWith('lmnt-'))
       .forEach((item) => store.removeMediaItem(item.id));
-
     store.updateTotalDuration();
-  };
-
-  useEffect(() => {
-    setScript('');
-    clearGeneratedAudioAndSubtitles();
   }, [propertyData?.referencia, propertyData?.valor, propertyData?.bairro, propertyData?.cidade]);
 
   const generateVoiceover = async () => {
@@ -276,11 +270,12 @@ export const ScriptPanel = () => {
         ? Math.min(globalSettings.timeLimit - 1000, Math.max(naturalTotalMs, 15000))
         : naturalTotalMs;
 
-      // Verificar posição inicial (após últimas legendas existentes)
-      const subtitleClips = clips.filter(c => c.track === 'SUB1');
-      const startPosition = subtitleClips.reduce((max, clip) =>
-        Math.max(max, clip.start + clip.duration), 0
-      );
+      const store = useEditorStore.getState();
+      store.clips
+        .filter((clip) => clip.type === 'subtitle')
+        .forEach((clip) => store.removeClip(clip.id));
+
+      const startPosition = 0;
 
       // Distribuir tempo proporcional ao número de palavras de cada chunk
       let currentStart = startPosition;
