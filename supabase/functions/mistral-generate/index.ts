@@ -78,7 +78,7 @@ ${cleanedContext || '(sem contexto adicional)'}
 ═════════ ESTRUTURA OBRIGATÓRIA (170 a 200 palavras, texto corrido) ═════════
 1) ABERTURA natural e direta, sem frase genérica vazia.
 2) APRESENTAÇÃO (3 frases): tipo + transação + bairro + cidade/estado, cite o código de referência, crie clima de oportunidade.
-3) DETALHAMENTO RICO (5–6 frases CAUDA LONGA): descreva SOMENTE o que estiver presente nos fatos ou no texto bruto. Se sala, cozinha, armários, acabamento ou vista não estiverem informados, não cite. Cite cada diferencial extraído (lazer, segurança, mobília, vista, andar etc.) explicando o BENEFÍCIO PRÁTICO. Comente a localização (proximidade do comércio, escolas, transporte, praia, avenidas) apenas quando o texto bruto trouxer isso.
+3) DETALHAMENTO RICO (5–6 frases CAUDA LONGA): descreva SOMENTE o que estiver presente nos fatos ou no texto bruto. Se sala, cozinha, armários, acabamento, vista, varanda, sacada ou ventilação não estiverem informados, não cite. Cite cada diferencial extraído explicando o BENEFÍCIO PRÁTICO sem extrapolar detalhes. Comente a localização apenas quando o texto bruto trouxer isso.
 4) CONDIÇÕES COMERCIAIS (2–3 frases): anuncie o valor com clareza${p.valorEntrada ? ', destaque a entrada facilitada' : ''}${p.condominio ? ', cite o condomínio' : ''}${p.iptu ? ', cite o IPTU' : ''}, diga que aceita financiamento bancário e/ou FGTS, ressalte que é uma oportunidade rara pelo preço.
 5) ENCERRAMENTO com CTA forte para visita ou contato.
 
@@ -88,6 +88,7 @@ ${cleanedContext || '(sem contexto adicional)'}
 - Escreva valores monetários por extenso para a TTS pronunciar bem (ex: "trezentos e sessenta mil reais").
 - Diga "código" ou "referência" em vez de "REF".
 - NÃO INVENTE quartos, banheiros, vagas, metragem, lazer, vista, acabamento, sacada, FGTS, armários ou qualquer item ausente.
+- É PROIBIDO inferir frases como "vista incrível", "acabamento de qualidade", "sala espaçosa", "pronto para morar" ou similares sem base explícita.
 - Se houver conflito entre texto bruto e fatos oficiais, os FATOS OFICIAIS vencem.
 - O valor precisa bater EXATAMENTE com VALOR OFICIAL.
 - A quantidade de quartos, banheiros, vagas e área útil precisa bater EXATAMENTE com os FATOS OFICIAIS.
