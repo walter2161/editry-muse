@@ -493,11 +493,11 @@ export const PropertyScanner = () => {
         bairro: extractedData.bairro || '',
         cidade: extractedData.cidade || '',
         estado: extractedData.estado || '',
-        quartos: extractedData.quartos || 2,
-        banheiros: extractedData.banheiros || 1,
-        vagas: extractedData.vagas || 1,
-        area: extractedData.area || 50,
-        valor: extractedData.valor || 0,
+        quartos: extractedData.quartos ?? 0,
+        banheiros: extractedData.banheiros ?? 0,
+        vagas: extractedData.vagas ?? 0,
+        area: extractedData.area ?? 0,
+        valor: extractedData.valor ?? 0,
         valorEntrada: extractedData.valorEntrada,
         diferenciais: extractedData.diferenciais || [],
         descricaoAdicional: extractedData.descricaoAdicional || '',
@@ -511,11 +511,11 @@ export const PropertyScanner = () => {
         url: cleanUrl,
       };
 
-      // Limpar copy do imóvel anterior antes de salvar o novo
+      // Limpar conteúdo gerado do imóvel anterior antes de salvar o novo
       setGeneratedCopy('');
       setPropertyData(finalData);
 
-      // Limpar timeline e mídia antes de adicionar novas imagens
+      // Limpar timeline, mídia, legendas e locuções antes de adicionar novas imagens
       clearTimelineAndMedia();
       
       // Atualizar nome do projeto no editor
