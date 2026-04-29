@@ -458,10 +458,26 @@ export const PropertyScanner = () => {
       
       const html = await response.text();
 
+      // Texto/markdown via Jina pra alimentar a IA com a descrição completa do imóvel
+      let pageContext = '';
+      try {
+        const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
+        const jr = await fetch(jinaUrl);
+        if (jr.ok) pageContext = (await jr.text()).slice(0, 12000);
+      } catch {}
+      if (!pageContext) {
+        try {
+          const tmp = new DOMParser().parseFromString(html, 'text/html');
+          tmp.querySelectorAll('script,style,nav,footer,header').forEach(el => el.remove());
+          pageContext = (tmp.body?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 12000);
+        } catch {}
+      }
+
       toast({
         title: 'Extraindo dados...',
         description: 'Lendo informações do imóvel',
       });
+
 
       // Extrair dados diretamente do HTML (rápido)
       const extractedData = extractPropertyDataFromHTML(html);
