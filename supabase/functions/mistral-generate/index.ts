@@ -30,27 +30,32 @@ interface PropertyPayload {
   url?: string;
 }
 
-const aberturas = [
-  "Oi, pessoal! Hoje quero te apresentar um imóvel que acabou de chegar pra venda",
-  "Olá, gente! Separei um tempinho pra te mostrar com calma esse imóvel imperdível",
-  "Oi, tudo bem? Hoje eu trouxe uma oportunidade muito interessante pra você",
-  "Olá, pessoal! Vem comigo conhecer esse imóvel que tem tudo pra ser o seu próximo lar",
-  "E aí, gente! Hoje o assunto é esse imóvel incrível que acabou de entrar no nosso portfólio",
-];
+const formatCurrency = (value?: number) => value ? `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
 
-const encerramentos = [
-  "Gostou? Me chama agora no WhatsApp que eu te envio todas as informações e fotos extras",
-  "Tem interesse? Manda mensagem pra mim que eu agendo a sua visita ainda essa semana",
-  "Não deixe essa oportunidade passar! Me chama no direct ou no WhatsApp que respondo na hora",
-  "Quer conhecer pessoalmente? Fala comigo agora que eu organizo a visita no melhor horário pra você",
-  "Esse imóvel tem tudo pra sair rápido. Me chama no WhatsApp que te dou todos os detalhes agora",
-];
-
-const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+const buildFactsBlock = (p: PropertyPayload) => [
+  `TIPO: ${p.tipo || 'Imóvel'}`,
+  `TRANSAÇÃO: ${p.transacao || 'Venda'}`,
+  `REFERÊNCIA: ${p.referencia || '-'}`,
+  `BAIRRO: ${p.bairro || '-'}`,
+  `CIDADE: ${p.cidade || '-'}`,
+  `ESTADO: ${p.estado || '-'}`,
+  `QUARTOS: ${p.quartos ?? 0}`,
+  `BANHEIROS: ${p.banheiros ?? 0}`,
+  `VAGAS: ${p.vagas ?? 0}`,
+  `ÁREA ÚTIL: ${p.area ?? 0} m²`,
+  `ÁREA TERRENO: ${p.areaTerreno ?? 0} m²`,
+  `VALOR OFICIAL: ${formatCurrency(p.valor)}`,
+  `ENTRADA: ${formatCurrency(p.valorEntrada)}`,
+  `CONDOMÍNIO: ${formatCurrency(p.condominio)}`,
+  `IPTU: ${formatCurrency(p.iptu)}`,
+  `DIFERENCIAIS: ${(p.diferenciais || []).join(', ') || '-'}`,
+  `DESCRIÇÃO EXTRA: ${p.descricaoAdicional || '-'}`,
+  `EMPRESA: ${p.nomeCorretor || 'Vendebens Imóveis'}`,
+  `WHATSAPP: ${p.telefoneCorretor || '-'}`,
+  `CRECI: ${p.creci || 'CRECI: 25571-J'}`,
+].join('\n');
 
 function buildScriptPrompt(p: PropertyPayload) {
-  const abertura = pick(aberturas);
-  const encerramento = pick(encerramentos);
   const cleanedContext = (p.pageContext || '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[[^\]]*\]\([^)]*\)/g, '')
@@ -58,46 +63,35 @@ function buildScriptPrompt(p: PropertyPayload) {
     .trim()
     .slice(0, 6000);
 
+  const facts = buildFactsBlock(p);
+
   return `Você é um redator publicitário sênior do mercado imobiliário brasileiro.
 Crie um ROTEIRO DE NARRAÇÃO em português do Brasil para um Reels/TikTok de 55 a 59 segundos.
 O texto será lido por uma voz feminina humana com IA. Use linguagem natural, conversacional, com gatilhos comerciais reais (escassez, exclusividade, prova social, oportunidade), sem enrolação.
 
-═════════ DADOS ESTRUTURADOS DO IMÓVEL ═════════
-Tipo: ${p.tipo || 'Imóvel'}
-Transação: ${p.transacao || 'Venda'}
-Código de referência: ${p.referencia || 'sem código'}
-Bairro: ${p.bairro || ''}
-Cidade/Estado: ${p.cidade || ''}/${p.estado || ''}
-Quartos: ${p.quartos ?? '-'}
-Banheiros: ${p.banheiros ?? '-'}
-Vagas: ${p.vagas ?? '-'}
-Área útil: ${p.area ? p.area + ' m²' : '-'}
-${p.areaTerreno ? `Área do terreno: ${p.areaTerreno} m²` : ''}
-Valor: ${p.valor ? 'R$ ' + p.valor.toLocaleString('pt-BR') : '-'}
-${p.valorEntrada ? `Entrada facilitada: R$ ${p.valorEntrada.toLocaleString('pt-BR')}` : ''}
-${p.condominio ? `Condomínio: R$ ${p.condominio.toLocaleString('pt-BR')}/mês` : ''}
-${p.iptu ? `IPTU: R$ ${p.iptu.toLocaleString('pt-BR')}/ano` : ''}
-Diferenciais: ${(p.diferenciais && p.diferenciais.length) ? p.diferenciais.join(', ') : 'imóvel de qualidade'}
-Observações: ${p.descricaoAdicional || '-'}
-Imobiliária: ${p.nomeCorretor || 'Vendebens Imóveis'}
-${p.creci ? p.creci : 'CRECI: 25571-J'}
+═════════ FATOS OFICIAIS DO IMÓVEL — PRIORIDADE MÁXIMA ═════════
+${facts}
 
 ═════════ TEXTO BRUTO DA PÁGINA DO IMÓVEL (use para enriquecer com detalhes reais — ambientes, lazer, acabamento, localização, vizinhança) ═════════
 ${cleanedContext || '(sem contexto adicional)'}
 
 ═════════ ESTRUTURA OBRIGATÓRIA (170 a 200 palavras, texto corrido) ═════════
-1) ABERTURA (use literalmente): "${abertura}".
+1) ABERTURA natural e direta, sem frase genérica vazia.
 2) APRESENTAÇÃO (3 frases): tipo + transação + bairro + cidade/estado, cite o código de referência, crie clima de oportunidade.
-3) DETALHAMENTO RICO (5–6 frases CAUDA LONGA): descreva ambientes (sala, cozinha, dormitórios, banheiros, área de serviço, sacada/varanda se houver), acabamento, distribuição, ventilação/iluminação. Cite cada diferencial extraído (lazer, segurança, mobília, vista, andar etc.) explicando o BENEFÍCIO PRÁTICO. Comente a localização (proximidade do comércio, escolas, transporte, praia, avenidas).
+3) DETALHAMENTO RICO (5–6 frases CAUDA LONGA): descreva SOMENTE o que estiver presente nos fatos ou no texto bruto. Se sala, cozinha, armários, acabamento, vista, varanda, sacada ou ventilação não estiverem informados, não cite. Cite cada diferencial extraído explicando o BENEFÍCIO PRÁTICO sem extrapolar detalhes. Comente a localização apenas quando o texto bruto trouxer isso.
 4) CONDIÇÕES COMERCIAIS (2–3 frases): anuncie o valor com clareza${p.valorEntrada ? ', destaque a entrada facilitada' : ''}${p.condominio ? ', cite o condomínio' : ''}${p.iptu ? ', cite o IPTU' : ''}, diga que aceita financiamento bancário e/ou FGTS, ressalte que é uma oportunidade rara pelo preço.
-5) ENCERRAMENTO (use literalmente): "${encerramento}".
+5) ENCERRAMENTO com CTA forte para visita ou contato.
 
 ═════════ REGRAS CRÍTICAS ═════════
 - Retorne APENAS o texto corrido da narração. Nada de títulos, listas, asteriscos, emojis, hashtags ou marcações.
 - 170 a 200 palavras. Nem mais, nem menos.
 - Escreva valores monetários por extenso para a TTS pronunciar bem (ex: "trezentos e sessenta mil reais").
 - Diga "código" ou "referência" em vez de "REF".
-- Não invente nada que não esteja nos dados ou no texto bruto.
+- NÃO INVENTE quartos, banheiros, vagas, metragem, lazer, vista, acabamento, sacada, FGTS, armários ou qualquer item ausente.
+- É PROIBIDO inferir frases como "vista incrível", "acabamento de qualidade", "sala espaçosa", "pronto para morar" ou similares sem base explícita.
+- Se houver conflito entre texto bruto e fatos oficiais, os FATOS OFICIAIS vencem.
+- O valor precisa bater EXATAMENTE com VALOR OFICIAL.
+- A quantidade de quartos, banheiros, vagas e área útil precisa bater EXATAMENTE com os FATOS OFICIAIS.
 - Use gatilhos naturais ("oportunidade rara", "dificilmente aparece outro assim", "imóvel pronto pra morar", "entrega imediata", "última unidade disponível" SOMENTE se fizer sentido).`;
 }
 
@@ -114,23 +108,12 @@ function buildCopyPrompt(p: PropertyPayload) {
   const tipoTag = (p.tipo || 'imovel').toLowerCase().replace(/\s+/g, '');
   const trxTag = (p.transacao || 'venda').toLowerCase();
 
+  const facts = buildFactsBlock(p);
+
   return `Você é um copywriter sênior de imobiliária. Escreva uma COPY LONGA, RICA e PERSUASIVA para Instagram/Facebook/TikTok (entre 220 e 320 palavras), pronta pra colar no Buffer.
 
-═════════ DADOS ESTRUTURADOS ═════════
-Tipo: ${p.tipo || 'Imóvel'}
-Transação: ${p.transacao || 'Venda'}
-Referência: ${p.referencia || '-'}
-Bairro: ${p.bairro || ''}
-Cidade/Estado: ${p.cidade || ''}/${p.estado || ''}
-Quartos: ${p.quartos ?? '-'} | Banheiros: ${p.banheiros ?? '-'} | Vagas: ${p.vagas ?? '-'} | Área: ${p.area ? p.area + 'm²' : '-'}${p.areaTerreno ? ` | Terreno: ${p.areaTerreno}m²` : ''}
-Valor: ${p.valor ? 'R$ ' + p.valor.toLocaleString('pt-BR') : '-'}
-${p.valorEntrada ? `Entrada: R$ ${p.valorEntrada.toLocaleString('pt-BR')}` : ''}
-${p.condominio ? `Condomínio: R$ ${p.condominio.toLocaleString('pt-BR')}/mês` : ''}
-${p.iptu ? `IPTU: R$ ${p.iptu.toLocaleString('pt-BR')}/ano` : ''}
-Diferenciais: ${(p.diferenciais && p.diferenciais.length) ? p.diferenciais.join(', ') : 'imóvel de qualidade'}
-Empresa: ${p.nomeCorretor || 'Vendebens Imóveis'}
-WhatsApp: ${p.telefoneCorretor || '(coloque seu número)'}
-${p.creci || 'CRECI: 25571-J'}
+═════════ FATOS OFICIAIS DO IMÓVEL — PRIORIDADE MÁXIMA ═════════
+${facts}
 
 ═════════ TEXTO BRUTO DA PÁGINA DO IMÓVEL (use para extrair detalhes reais) ═════════
 ${cleanedContext || '(sem contexto)'}
@@ -159,6 +142,8 @@ ${p.creci || 'CRECI: 25571-J'}
 - Use TODOS os dados, sem inventar.
 - Tom profissional, entusiasmado e humano. Emojis estratégicos.
 - NUNCA omita CRECI, empresa, referência e WhatsApp.
+- O valor anunciado precisa bater EXATAMENTE com VALOR OFICIAL.
+- A copy não pode inventar cômodos, acabamento, vista, sacada ou benefícios não presentes nos fatos ou no texto bruto.
 - Retorne APENAS o texto final pronto pra colar.`;
 }
 

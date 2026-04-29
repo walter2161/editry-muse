@@ -53,10 +53,10 @@ const defaultProperty: PropertyData = {
   bairro: '',
   cidade: '',
   estado: '',
-  quartos: 2,
-  banheiros: 1,
-  vagas: 1,
-  area: 50,
+  quartos: 0,
+  banheiros: 0,
+  vagas: 0,
+  area: 0,
   valor: 0,
   valorEntrada: undefined,
   diferenciais: [],
@@ -65,6 +65,19 @@ const defaultProperty: PropertyData = {
   telefoneCorretor: '',
   creci: 'CRECI: 25571-J',
 };
+
+const buildPropertyFingerprint = (data: PropertyData | null | undefined) => JSON.stringify({
+  url: data?.url || '',
+  referencia: data?.referencia || '',
+  valor: data?.valor || 0,
+  quartos: data?.quartos || 0,
+  banheiros: data?.banheiros || 0,
+  vagas: data?.vagas || 0,
+  area: data?.area || 0,
+  bairro: data?.bairro || '',
+  cidade: data?.cidade || '',
+  estado: data?.estado || '',
+});
 
 export const usePropertyStore = create<PropertyState>((set) => {
   // Carregar do localStorage na inicialização
@@ -101,8 +114,10 @@ export const usePropertyStore = create<PropertyState>((set) => {
     
     setPropertyData: (data) => {
       set((state) => {
-        saveToStorage(data, state.generatedCopy);
-        return { propertyData: data };
+        const shouldResetCopy = buildPropertyFingerprint(state.propertyData) !== buildPropertyFingerprint(data);
+        const nextCopy = shouldResetCopy ? '' : state.generatedCopy;
+        saveToStorage(data, nextCopy);
+        return { propertyData: data, generatedCopy: nextCopy };
       });
     },
     
