@@ -501,16 +501,20 @@ export const PropertyScanner = () => {
         valorEntrada: extractedData.valorEntrada,
         diferenciais: extractedData.diferenciais || [],
         descricaoAdicional: extractedData.descricaoAdicional || '',
-        nomeCorretor: extractedData.nomeCorretor || '',
+        nomeCorretor: extractedData.nomeCorretor || 'Vendebens Imóveis',
         telefoneCorretor: extractedData.telefoneCorretor || '',
-        creci: extractedData.creci,
+        creci: extractedData.creci || 'CRECI: 25571-J',
         condominio: extractedData.condominio,
         iptu: extractedData.iptu,
         areaTerreno: extractedData.areaTerreno,
+        pageContext,
+        url: cleanUrl,
       };
 
+      // Limpar copy do imóvel anterior antes de salvar o novo
+      setGeneratedCopy('');
       setPropertyData(finalData);
-      
+
       // Limpar timeline e mídia antes de adicionar novas imagens
       clearTimelineAndMedia();
       
