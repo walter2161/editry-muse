@@ -129,144 +129,19 @@ export const ScriptPanel = () => {
     setIsGenerating(true);
 
     try {
-      const iniciosCordiais = [
-        "Oi, pessoal! Hoje vou mostrar pra vocês um imóvel que está disponível",
-        "Olá, gente! Passei aqui pra apresentar um imóvel que pode ser uma ótima opção pra você",
-        "Oi, galera! Quero te mostrar rapidamente um imóvel que vale a pena conhecer",
-        "Olá, pessoal! Separei um tempinho pra te mostrar esse imóvel que chegou pra venda",
-        "Oi, tudo bem? Tenho uma ótima oportunidade e quero te apresentar esse imóvel com calma"
-      ];
-
-      const finaisChamada = [
-        "Gostou do imóvel? Me chama no WhatsApp que te envio todas as informações",
-        "Esse imóvel pode sair rápido, então me chama agora pra ver disponibilidade",
-        "Se esse imóvel não for o ideal, me chama que te envio outras opções no mesmo perfil",
-        "Quer conhecer pessoalmente? Me chama e agendo uma visita pra você",
-        "Gostou do imóvel? Clica no link da bio ou chama no WhatsApp que eu te respondo na hora"
-      ];
-
-      const inicioEscolhido = iniciosCordiais[Math.floor(Math.random() * iniciosCordiais.length)];
-      const fimEscolhido = finaisChamada[Math.floor(Math.random() * finaisChamada.length)];
-
-      const prompt = `Crie um roteiro RICO E DETALHADO para narração de vídeo de 55-59 segundos sobre este imóvel para redes sociais (TikTok/Instagram Reels).
-
-DADOS DO IMÓVEL (USE TODOS, SEM OMITIR NENHUM):
-- Tipo: ${propertyData.tipo}
-- Transação: ${propertyData.transacao}
-- Referência: ${propertyData.referencia || 'sem código'}
-- Localização: ${propertyData.bairro}, ${propertyData.cidade}/${propertyData.estado}
-- Quartos: ${propertyData.quartos}
-- Banheiros: ${propertyData.banheiros}
-- Vagas: ${propertyData.vagas}
-- Área útil: ${propertyData.area}m²
-${propertyData.areaTerreno ? `- Área do terreno: ${propertyData.areaTerreno}m²` : ''}
-- Valor: R$ ${propertyData.valor.toLocaleString('pt-BR')}
-${propertyData.valorEntrada ? `- Entrada: R$ ${propertyData.valorEntrada.toLocaleString('pt-BR')}` : ''}
-${propertyData.condominio ? `- Condomínio: R$ ${propertyData.condominio.toLocaleString('pt-BR')}/mês` : ''}
-${propertyData.iptu ? `- IPTU: R$ ${propertyData.iptu.toLocaleString('pt-BR')}/ano` : ''}
-- Diferenciais: ${propertyData.diferenciais.join(', ') || 'imóvel de qualidade'}
-${propertyData.descricaoAdicional ? `- Observações extras: ${propertyData.descricaoAdicional}` : ''}
-- Imobiliária: ${propertyData.nomeCorretor}
-${propertyData.creci ? `- ${propertyData.creci}` : ''}
-
-ESTRUTURA OBRIGATÓRIA (deve ter ENTRE 160 E 200 PALAVRAS — nem menos, nem mais):
-
-1. ABERTURA (use literalmente):
-"${inicioEscolhido}"
-
-2. APRESENTAÇÃO DO IMÓVEL (3-4 frases):
-- Diga o tipo, a transação e a localização completa (bairro, cidade e estado)
-- Cite o código de referência
-- Construa um clima de oportunidade
-
-3. DETALHAMENTO TÉCNICO (4-5 frases — CAUDA LONGA, descreva com riqueza):
-- Quartos, banheiros, vagas e área útil — descreva os ambientes com adjetivos (amplo, arejado, bem distribuído, planejado)
-- Mencione TODOS os diferenciais um a um, explicando rapidamente o benefício prático de cada um
-- Comente sobre a localização (proximidade de comércio, escolas, transporte se fizer sentido)
-
-4. CONDIÇÕES COMERCIAIS (2-3 frases):
-- Anuncie o valor com clareza
-${propertyData.valorEntrada ? '- Destaque a entrada facilitada' : ''}
-${propertyData.condominio ? '- Cite o condomínio' : ''}
-${propertyData.iptu ? '- Cite o IPTU' : ''}
-- Mencione que aceita financiamento bancário e/ou outras formas de negociação
-- Dê senso de urgência ("oportunidade rara", "não vai durar muito")
-
-5. ENCERRAMENTO (use literalmente):
-"${fimEscolhido}"
-
-REGRAS CRÍTICAS:
-- Retorne APENAS o texto corrido da narração, sem títulos, sem marcações, sem asteriscos, sem listas
-- USE ENTRE 160 E 200 PALAVRAS (vídeo de ~58s falado em ritmo natural)
-- Use linguagem natural, conversacional, entusiasmada e profissional
-- Sem emojis, sem hashtags, sem ler "REF:" — diga "código" ou "referência"
-- Escreva valores por extenso quando for melhor ouvir (ex: "cento e sessenta e seis mil reais")
-- Não invente informações que não estão nos dados`;
-
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${MISTRAL_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'mistral-small-latest',
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.85,
-          max_tokens: 1000,
-        }),
+      const { data, error } = await supabase.functions.invoke('mistral-generate', {
+        body: { mode: 'script', property: propertyData },
       });
 
-      if (!response.ok) {
-        throw new Error('Erro na API da Mistral');
-      }
+      if (error) throw error;
+      const generatedScript = (data?.text || '').trim();
+      if (!generatedScript) throw new Error('Resposta vazia da IA');
 
-      const data = await response.json();
-      const generatedScript = data.choices[0].message.content;
       setScript(generatedScript);
       toast.success('Roteiro gerado com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao gerar roteiro:', error);
-      
-      if (!propertyData) {
-        toast.error('Dados do imóvel não disponíveis');
-        setIsGenerating(false);
-        return;
-      }
-
-      const tipo = propertyData.tipo || 'Imóvel';
-      const cidade = propertyData.cidade || '';
-      const bairro = propertyData.bairro || '';
-      const quartos = propertyData.quartos || 0;
-      const valor = propertyData.valor ? `R$ ${propertyData.valor.toLocaleString('pt-BR')}` : '';
-      
-      const iniciosCordiais = [
-        "Oi, pessoal! Hoje vou mostrar pra vocês um imóvel que está disponível",
-        "Olá, gente! Passei aqui pra apresentar um imóvel que pode ser uma ótima opção pra você",
-        "Oi, galera! Quero te mostrar rapidamente um imóvel que vale a pena conhecer",
-        "Olá, pessoal! Separei um tempinho pra te mostrar esse imóvel que chegou pra venda",
-        "Oi, tudo bem? Tenho uma ótima oportunidade e quero te apresentar esse imóvel com calma"
-      ];
-
-      const finaisChamada = [
-        "Gostou do imóvel? Me chama no WhatsApp que te envio todas as informações",
-        "Esse imóvel pode sair rápido, então me chama agora pra ver disponibilidade",
-        "Se esse imóvel não for o ideal, me chama que te envio outras opções no mesmo perfil",
-        "Quer conhecer pessoalmente? Me chama e agendo uma visita pra você",
-        "Gostou do imóvel? Clica no link da bio ou chama no WhatsApp que eu te respondo na hora"
-      ];
-
-      const inicioEscolhido = iniciosCordiais[Math.floor(Math.random() * iniciosCordiais.length)];
-      const fimEscolhido = finaisChamada[Math.floor(Math.random() * finaisChamada.length)];
-      
-      const fallback = `${inicioEscolhido}. Este ${tipo.toLowerCase()} incrível em ${bairro} tem ${quartos} quartos e está localizado em ${cidade}. Amplo, bem localizado e com acabamento de qualidade. ${valor ? `Por apenas ${valor}.` : ''} ${fimEscolhido}.`;
-      setScript(fallback);
-      toast.success('Roteiro gerado (fallback)');
+      toast.error(`Erro ao gerar roteiro: ${error?.message || 'desconhecido'}`);
     } finally {
       setIsGenerating(false);
     }
