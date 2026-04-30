@@ -142,8 +142,28 @@ export const ScriptPanel = () => {
       });
 
       if (error) throw error;
-      const generatedScript = (data?.text || '').trim();
+      let generatedScript = (data?.text || '').trim();
       if (!generatedScript) throw new Error('Resposta vazia da IA');
+
+      // Hard cap: garantir que cabe em 59s de locução (~150 wpm => máx 145 palavras)
+      const MAX_WORDS = 145;
+      const words = generatedScript.split(/\s+/).filter(Boolean);
+      if (words.length > MAX_WORDS) {
+        let truncated = words.slice(0, MAX_WORDS).join(' ');
+        // Cortar no último ponto/!/? para fechar frase
+        const lastPunct = Math.max(
+          truncated.lastIndexOf('.'),
+          truncated.lastIndexOf('!'),
+          truncated.lastIndexOf('?')
+        );
+        if (lastPunct > truncated.length * 0.6) {
+          truncated = truncated.slice(0, lastPunct + 1);
+        } else {
+          truncated = truncated.replace(/[,;:\s]+$/, '') + '.';
+        }
+        generatedScript = truncated;
+        toast.info(`Roteiro ajustado para ${generatedScript.split(/\s+/).length} palavras (≤59s)`);
+      }
 
       setScript(generatedScript);
       toast.success('Roteiro gerado com sucesso!');
