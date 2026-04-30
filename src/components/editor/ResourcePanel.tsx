@@ -229,12 +229,25 @@ export const ResourcePanel = () => {
         volume: 0.5,
         speed: 1,
         opacity: 1,
+      addClip({
+        id: `clip-${Date.now()}-${Math.random().toString(36).substring(2)}`,
+        type: 'audio',
+        mediaId,
+        track: 'A2',
+        start: lastPosition,
+        duration: track.duration,
+        scale: 1,
+        brightness: 0,
+        contrast: 0,
+        volume: 0.15,
+        speed: 1,
+        opacity: 1,
         transition: 'cross-fade',
         transitionDuration: 500
       });
       
       useEditorStore.getState().updateTotalDuration();
-      toast.success(`Trilha "${track.name}" adicionada`);
+      toast.success(`Trilha "${track.name}" adicionada (volume 15%)`);
     } catch (error) {
       console.error("Erro ao adicionar trilha:", error);
       toast.error("Erro ao adicionar trilha sonora");
