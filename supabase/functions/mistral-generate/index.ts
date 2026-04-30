@@ -66,8 +66,9 @@ function buildScriptPrompt(p: PropertyPayload) {
   const facts = buildFactsBlock(p);
 
   return `Você é um redator publicitário sênior do mercado imobiliário brasileiro.
-Crie um ROTEIRO DE NARRAÇÃO em português do Brasil para um Reels/TikTok de 55 a 59 segundos.
-O texto será lido por uma voz feminina humana com IA. Use linguagem natural, conversacional, com gatilhos comerciais reais (escassez, exclusividade, prova social, oportunidade), sem enrolação.
+Crie um ROTEIRO DE NARRAÇÃO em português do Brasil para um Reels/TikTok de NO MÁXIMO 59 segundos quando lido em ritmo natural por TTS feminina (cerca de 150 palavras por minuto).
+ALVO RÍGIDO: 130 a 145 palavras (equivale a 52–58 segundos de locução). NUNCA ultrapasse 145 palavras.
+Use linguagem natural, conversacional, com gatilhos comerciais reais (escassez, exclusividade, prova social, oportunidade), sem enrolação.
 
 ═════════ FATOS OFICIAIS DO IMÓVEL — PRIORIDADE MÁXIMA ═════════
 ${facts}
@@ -75,24 +76,23 @@ ${facts}
 ═════════ TEXTO BRUTO DA PÁGINA DO IMÓVEL (use para enriquecer com detalhes reais — ambientes, lazer, acabamento, localização, vizinhança) ═════════
 ${cleanedContext || '(sem contexto adicional)'}
 
-═════════ ESTRUTURA OBRIGATÓRIA (170 a 200 palavras, texto corrido) ═════════
-1) ABERTURA natural e direta, sem frase genérica vazia.
-2) APRESENTAÇÃO (3 frases): tipo + transação + bairro + cidade/estado, cite o código de referência, crie clima de oportunidade.
-3) DETALHAMENTO RICO (5–6 frases CAUDA LONGA): descreva SOMENTE o que estiver presente nos fatos ou no texto bruto. Se sala, cozinha, armários, acabamento, vista, varanda, sacada ou ventilação não estiverem informados, não cite. Cite cada diferencial extraído explicando o BENEFÍCIO PRÁTICO sem extrapolar detalhes. Comente a localização apenas quando o texto bruto trouxer isso.
-4) CONDIÇÕES COMERCIAIS (2–3 frases): anuncie o valor com clareza${p.valorEntrada ? ', destaque a entrada facilitada' : ''}${p.condominio ? ', cite o condomínio' : ''}${p.iptu ? ', cite o IPTU' : ''}, diga que aceita financiamento bancário e/ou FGTS, ressalte que é uma oportunidade rara pelo preço.
-5) ENCERRAMENTO com CTA forte para visita ou contato.
+═════════ ESTRUTURA OBRIGATÓRIA (texto corrido, 130 a 145 palavras) ═════════
+1) ABERTURA curta e direta (1 frase).
+2) APRESENTAÇÃO (2 frases): tipo + transação + bairro + cidade/estado, cite o código de referência.
+3) DETALHAMENTO (3–4 frases CAUDA LONGA mas enxutas): descreva SOMENTE o que estiver presente nos fatos ou no texto bruto. Cite os principais diferenciais com benefício prático. Não cite nada não informado.
+4) CONDIÇÕES COMERCIAIS (1–2 frases): anuncie o valor com clareza${p.valorEntrada ? ', destaque a entrada facilitada' : ''}, diga que aceita financiamento bancário e/ou FGTS.
+5) ENCERRAMENTO (1 frase) com CTA forte para visita ou contato.
 
 ═════════ REGRAS CRÍTICAS ═════════
 - Retorne APENAS o texto corrido da narração. Nada de títulos, listas, asteriscos, emojis, hashtags ou marcações.
-- 170 a 200 palavras. Nem mais, nem menos.
+- LIMITE ABSOLUTO: 130 a 145 palavras. Conte mentalmente antes de responder. Se passar de 145, REESCREVA mais curto.
 - Escreva valores monetários por extenso para a TTS pronunciar bem (ex: "trezentos e sessenta mil reais").
 - Diga "código" ou "referência" em vez de "REF".
 - NÃO INVENTE quartos, banheiros, vagas, metragem, lazer, vista, acabamento, sacada, FGTS, armários ou qualquer item ausente.
-- É PROIBIDO inferir frases como "vista incrível", "acabamento de qualidade", "sala espaçosa", "pronto para morar" ou similares sem base explícita.
+- É PROIBIDO inferir frases como "vista incrível", "acabamento de qualidade", "sala espaçosa", "pronto para morar" sem base explícita.
 - Se houver conflito entre texto bruto e fatos oficiais, os FATOS OFICIAIS vencem.
 - O valor precisa bater EXATAMENTE com VALOR OFICIAL.
-- A quantidade de quartos, banheiros, vagas e área útil precisa bater EXATAMENTE com os FATOS OFICIAIS.
-- Use gatilhos naturais ("oportunidade rara", "dificilmente aparece outro assim", "imóvel pronto pra morar", "entrega imediata", "última unidade disponível" SOMENTE se fizer sentido).`;
+- A quantidade de quartos, banheiros, vagas e área útil precisa bater EXATAMENTE com os FATOS OFICIAIS.`;
 }
 
 function buildCopyPrompt(p: PropertyPayload) {
