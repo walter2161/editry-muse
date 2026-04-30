@@ -221,61 +221,92 @@ export const ScheduleBufferDialog = ({
     setDiagnostics(null);
 
     try {
-      toast.message("Enviando vídeo...", { description: "Isso pode levar alguns segundos." });
-
+      toast.message("Preparando vídeo...", { description: "Convertendo arquivo para envio." });
       const videoBase64 = await blobToBase64(effectiveVideo.blob);
+
       const channelIds = Array.from(selected);
-      const channelOptions = channelIds.map((id) => {
-        const ch = channels.find((c) => c.id === id);
-        const o = opts[id] ?? {};
-        return { channelId: id, service: ch?.service ?? "", ...o };
+      const orderedServices = ["instagram", "facebook", "tiktok"];
+      const sortedChannelIds = [...channelIds].sort((a, b) => {
+        const sa = channels.find((c) => c.id === a)?.service?.toLowerCase() ?? "";
+        const sb = channels.find((c) => c.id === b)?.service?.toLowerCase() ?? "";
+        return orderedServices.indexOf(sa) - orderedServices.indexOf(sb);
       });
 
-      const { data, error } = await supabase.functions.invoke("buffer-schedule-post", {
-        body: {
-          channelIds,
-          channelOptions,
-          text,
-          videoBase64,
-          filename: effectiveVideo.name,
-          dueAt: dueAtIso,
-        },
-      });
+      let okCount = 0;
+      let failCount = 0;
+      const failures: Array<{ name: string; service: string; message: string }> = [];
 
-      if (error) {
-        const statusCode = Number(error.context?.status ?? error.status ?? 500);
-        if (statusCode === 500) {
-          setDiagnostics(
-            buildDiagnostics(
-              effectiveVideo,
+      for (let i = 0; i < sortedChannelIds.length; i++) {
+        const channelId = sortedChannelIds[i];
+        const ch = channels.find((c) => c.id === channelId);
+        const svc = ch?.service ?? "";
+        const label = ch?.name || ch?.serviceUsername || svc || channelId;
+        const o = opts[channelId] ?? {};
+
+        toast.message(
+          `Etapa ${i + 1}/${sortedChannelIds.length}: ${svc.toUpperCase()}`,
+          { description: `Agendando em ${label}...` },
+        );
+
+        try {
+          const { data, error } = await supabase.functions.invoke("buffer-schedule-post", {
+            body: {
+              channelIds: [channelId],
+              channelOptions: [{ channelId, service: svc, ...o }],
+              text,
               videoBase64,
-              statusCode,
-              error.message ?? "Falha ao agendar no Buffer",
-            ),
-          );
+              filename: effectiveVideo.name,
+              dueAt: dueAtIso,
+            },
+          });
+
+          if (error) {
+            const statusCode = Number(error.context?.status ?? error.status ?? 500);
+            if (statusCode === 500) {
+              setDiagnostics(
+                buildDiagnostics(
+                  effectiveVideo,
+                  videoBase64,
+                  statusCode,
+                  error.message ?? `Falha ao agendar em ${label}`,
+                ),
+              );
+            }
+            throw error;
+          }
+
+          const results = (data?.results ?? []) as Array<{
+            channelId: string;
+            ok: boolean;
+            result: { message?: string } | unknown;
+          }>;
+          const r = results[0];
+          if (r?.ok) {
+            okCount++;
+            toast.success(`✓ ${svc.toUpperCase()} (${label}) agendado`);
+          } else {
+            failCount++;
+            const msg = (r?.result as { message?: string } | undefined)?.message ?? "Erro desconhecido";
+            failures.push({ name: label, service: svc, message: msg });
+            toast.error(`✗ ${svc.toUpperCase()} (${label}): ${msg}`);
+          }
+        } catch (err: any) {
+          failCount++;
+          const msg = err?.message ?? "Falha na requisição";
+          failures.push({ name: label, service: svc, message: msg });
+          toast.error(`✗ ${svc.toUpperCase()} (${label}): ${msg}`);
         }
-        throw error;
-      }
-
-      const results = (data?.results ?? []) as Array<{
-        channelId: string;
-        ok: boolean;
-        result: { message?: string } | unknown;
-      }>;
-
-      const okCount = results.filter((r) => r.ok).length;
-      const failCount = results.length - okCount;
-
-      if (okCount > 0) toast.success(`${okCount} post(s) agendado(s) no Buffer!`);
-      if (failCount > 0) {
-        const firstErr = (results.find((r) => !r.ok)?.result as { message?: string } | undefined)?.message ?? "Erro desconhecido";
-        toast.error(`${failCount} falha(s): ${firstErr}`);
       }
 
       if (okCount > 0 && failCount === 0) {
+        toast.success(`Todos os ${okCount} canais agendados com sucesso!`);
         setOpen(false);
         setVideoFile(null);
         setSelected(new Set());
+      } else if (okCount > 0) {
+        toast.warning(`${okCount} sucesso(s) e ${failCount} falha(s). Verifique os canais com erro.`);
+      } else {
+        toast.error(`Nenhum canal agendado. ${failures[0]?.message ?? ""}`);
       }
     } catch (err: any) {
       console.error(err);
