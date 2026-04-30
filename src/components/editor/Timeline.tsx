@@ -284,7 +284,10 @@ export const Timeline = () => {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setZoom(Math.max(0.05, zoom - 0.25))}
+            onClick={() => {
+              const step = zoom <= 0.5 ? 0.05 : zoom <= 1 ? 0.1 : 0.25;
+              setZoom(Math.max(0.05, +(zoom - step).toFixed(2)));
+            }}
             className="h-6 w-6 p-0 hover:bg-muted"
           >
             -
@@ -293,7 +296,10 @@ export const Timeline = () => {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setZoom(Math.min(5, zoom + 0.25))}
+            onClick={() => {
+              const step = zoom < 0.5 ? 0.05 : zoom < 1 ? 0.1 : 0.25;
+              setZoom(Math.min(5, +(zoom + step).toFixed(2)));
+            }}
             className="h-6 w-6 p-0 hover:bg-muted"
           >
             +
