@@ -156,7 +156,7 @@ export const Timeline = () => {
       scale: 1.0,
       brightness: 0,
       contrast: 0,
-      volume: 1.0,
+      volume: mediaItem.type === 'audio' && track !== 'A1' ? 0.15 : 1.0,
       speed: 1.0,
       opacity: 1.0,
     };

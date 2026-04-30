@@ -226,7 +226,7 @@ export const ResourcePanel = () => {
         scale: 1,
         brightness: 0,
         contrast: 0,
-        volume: 0.5,
+        volume: 0.15,
         speed: 1,
         opacity: 1,
         transition: 'cross-fade',
@@ -234,7 +234,7 @@ export const ResourcePanel = () => {
       });
       
       useEditorStore.getState().updateTotalDuration();
-      toast.success(`Trilha "${track.name}" adicionada`);
+      toast.success(`Trilha "${track.name}" adicionada (volume 15%)`);
     } catch (error) {
       console.error("Erro ao adicionar trilha:", error);
       toast.error("Erro ao adicionar trilha sonora");
