@@ -117,6 +117,10 @@ export const usePropertyStore = create<PropertyState>((set) => {
         const shouldResetCopy = buildPropertyFingerprint(state.propertyData) !== buildPropertyFingerprint(data);
         const nextCopy = shouldResetCopy ? '' : state.generatedCopy;
         saveToStorage(data, nextCopy);
+        // Sincronizar thumbnail do editor imediatamente (import dinâmico evita ciclo)
+        import('@/lib/syncThumbnailFromProperty')
+          .then(({ syncThumbnailFromProperty }) => syncThumbnailFromProperty(data))
+          .catch((e) => console.error('Erro ao sincronizar thumbnail:', e));
         return { propertyData: data, generatedCopy: nextCopy };
       });
     },
