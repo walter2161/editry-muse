@@ -988,17 +988,35 @@ export const ExportVideoDialog = () => {
               <p className="text-xs text-muted-foreground truncate">
                 {renderedFilename} · {(renderedBlob.size / (1024 * 1024)).toFixed(1)} MB
               </p>
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  setIsOpen(false);
-                  setScheduleOpen(true);
-                }}
-              >
-                <CalendarClock className="w-4 h-4 mr-2" />
-                Agendar agora no Buffer
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (!renderedBlob || !renderedFilename) return;
+                    const url = URL.createObjectURL(renderedBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = renderedFilename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("Download iniciado");
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar vídeo
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setScheduleOpen(true);
+                  }}
+                >
+                  <CalendarClock className="w-4 h-4 mr-2" />
+                  Agendar no Buffer
+                </Button>
+              </div>
             </div>
           )}
         </div>
