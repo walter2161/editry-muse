@@ -735,14 +735,48 @@ export const PropertyScanner = () => {
         <h2 className="text-sm font-semibold">Escanear Imóvel</h2>
         <span className="text-[11px] text-muted-foreground hidden sm:inline">Cole a URL para extrair dados e fotos</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://www.vendebens.com.br/imoveis/..."
           disabled={isScanning}
-          className="h-8 text-xs"
+          className="h-8 text-xs flex-1 min-w-[200px]"
         />
+        {autoEnabled && (
+          <>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn('h-8 text-xs', !scheduleDate && 'text-muted-foreground')}
+                  disabled={isScanning}
+                >
+                  <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+                  {scheduleDate ? format(scheduleDate, 'dd/MM/yyyy') : 'Data'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduleDate}
+                  onSelect={setScheduleDate}
+                  initialFocus
+                  disabled={(d) => d < new Date(new Date().toDateString())}
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input
+              type="time"
+              value={scheduleTime}
+              onChange={(e) => setScheduleTime(e.target.value)}
+              disabled={isScanning}
+              className="h-8 text-xs w-[110px]"
+            />
+          </>
+        )}
         <Button onClick={handleScan} disabled={isScanning} size="sm">
           {isScanning ? (
             <>
