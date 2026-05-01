@@ -483,6 +483,23 @@ export const PropertyScanner = () => {
       return;
     }
 
+    // Se automação ativa, validar data/hora e registrar pedido
+    if (autoEnabled) {
+      if (!scheduleDate) {
+        toast({ title: 'Data ausente', description: 'Escolha a data do agendamento', variant: 'destructive' });
+        return;
+      }
+      const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
+      const due = new Date(scheduleDate);
+      due.setHours(hh || 0, mm || 0, 0, 0);
+      if (due.getTime() < Date.now()) {
+        toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
+        return;
+      }
+      setAutomationRequest(due.toISOString());
+      toast({ title: '🤖 Automação armada', description: `Agendamento previsto: ${format(due, 'dd/MM/yyyy HH:mm')}` });
+    }
+
     setIsScanning(true);
     try {
       // Extrair código de referência da URL (após o último -)
