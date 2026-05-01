@@ -63,7 +63,7 @@ const normalizeForSpeech = (text: string): string => {
 
 export const AutoPilot = () => {
   const { enabled, dueAtIso, triggered, consume, setStep, reset } = useAutomationStore();
-  const { propertyData, generatedCopy } = usePropertyStore();
+  const { propertyData } = usePropertyStore();
   const ranRef = useRef(false);
 
   useEffect(() => {
