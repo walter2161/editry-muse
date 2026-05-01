@@ -99,8 +99,12 @@ const extractPropertyDataFromText = (text: string): Partial<PropertyData> => {
 export const PropertyScanner = () => {
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleTime, setScheduleTime] = useState('10:00');
   const { setPropertyData, setGeneratedCopy } = usePropertyStore();
   const { addMediaItem, addClip, updateTotalDuration, clearTimelineAndMedia } = useEditorStore();
+  const setAutomationRequest = useAutomationStore((s) => s.setRequest);
   const { toast } = useToast();
   const navigate = useNavigate();
 
