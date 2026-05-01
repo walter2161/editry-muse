@@ -913,6 +913,27 @@ export const ExportVideoDialog = () => {
     return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
   };
 
+  // Expor handleExport globalmente para automação (AutoPilot).
+  useEffect(() => {
+    (window as any).__triggerVideoExport = async (): Promise<{ blob: Blob; filename: string }> => {
+      const before = useRenderedVideoStore.getState().createdAt;
+      handleExport();
+      return await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timeout ao renderizar vídeo')), 10 * 60 * 1000);
+        const unsub = useRenderedVideoStore.subscribe((state) => {
+          if (state.blob && state.filename && state.createdAt && state.createdAt !== before) {
+            clearTimeout(timeout);
+            unsub();
+            resolve({ blob: state.blob, filename: state.filename });
+          }
+        });
+      });
+    };
+    return () => {
+      delete (window as any).__triggerVideoExport;
+    };
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
