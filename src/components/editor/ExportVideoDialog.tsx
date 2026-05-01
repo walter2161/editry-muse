@@ -736,17 +736,11 @@ export const ExportVideoDialog = () => {
               return;
             }
 
-            // Se o navegador suportar MP4 nativamente, baixar direto
+            // Se o navegador suportar MP4 nativamente, manter o blob (sem download automático)
             if (mimeType.includes('mp4')) {
               const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename;
-              a.click();
-              URL.revokeObjectURL(url);
               setRendered(blob, filename);
-              toast.success("Vídeo exportado em MP4 com sucesso!");
+              toast.success("Vídeo renderizado! Use os botões para baixar ou agendar.");
               setIsExporting(false);
               setExportProgress(100);
               resolve();
@@ -798,32 +792,20 @@ export const ExportVideoDialog = () => {
             const data = await ffmpeg.readFile(outputName);
             const mp4Blob = new Blob([new Uint8Array(data as any)], { type: 'video/mp4' });
             const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
-            const url = URL.createObjectURL(mp4Blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
             setRendered(mp4Blob, filename);
 
-            toast.success("Vídeo exportado em MP4 com sucesso!");
+            toast.success("Vídeo renderizado em MP4! Use os botões para baixar ou agendar.");
             setIsExporting(false);
             setExportProgress(100);
             resolve();
           } catch (err) {
-            console.error('Falha na conversão para MP4, baixando WEBM como fallback', err);
-            // Fallback: baixar WEBM
+            console.error('Falha na conversão para MP4, mantendo WEBM como fallback', err);
             const blob = new Blob(chunks, { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.webm`;
-            a.click();
-            URL.revokeObjectURL(url);
-            toast.warning("MP4 indisponível, WEBM exportado como alternativa");
+            const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.webm`;
+            setRendered(blob, filename);
+            toast.warning("MP4 indisponível, WEBM disponível para download/agendamento");
             setIsExporting(false);
             setExportProgress(100);
-            setTimeout(() => setIsOpen(false), 1500);
             resolve();
           }
         };
