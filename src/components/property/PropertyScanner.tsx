@@ -1,11 +1,17 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, CalendarIcon, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { usePropertyStore, PropertyData } from '@/store/propertyStore';
 import { useEditorStore, MediaItem } from '@/store/editorStore';
+import { useAutomationStore } from '@/store/automationStore';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
