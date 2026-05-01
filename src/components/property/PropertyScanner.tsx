@@ -791,6 +791,22 @@ export const PropertyScanner = () => {
           )}
         </Button>
       </div>
+      <label className="flex items-start gap-2 pt-1 cursor-pointer text-xs">
+        <Checkbox
+          checked={autoEnabled}
+          onCheckedChange={(v) => setAutoEnabled(!!v)}
+          disabled={isScanning}
+          className="mt-0.5"
+        />
+        <span className="flex-1">
+          <span className="flex items-center gap-1 font-medium">
+            <Zap className="w-3 h-3 text-primary" /> Automação completa
+          </span>
+          <span className="text-muted-foreground block">
+            Escaneia, edita, adiciona música, gera roteiro+legenda+locução, renderiza e agenda nos 3 canais na data definida.
+          </span>
+        </span>
+      </label>
     </div>
   );
 };
