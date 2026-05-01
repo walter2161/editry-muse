@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAutomationStore } from '@/store/automationStore';
 import { usePropertyStore } from '@/store/propertyStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useRenderedVideoStore } from '@/store/renderedVideoStore';
+
 
 const LOCAL_SOUNDTRACK = {
   id: 'local-1',
