@@ -1,11 +1,17 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, CalendarIcon, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { usePropertyStore, PropertyData } from '@/store/propertyStore';
 import { useEditorStore, MediaItem } from '@/store/editorStore';
+import { useAutomationStore } from '@/store/automationStore';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -93,8 +99,12 @@ const extractPropertyDataFromText = (text: string): Partial<PropertyData> => {
 export const PropertyScanner = () => {
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleTime, setScheduleTime] = useState('10:00');
   const { setPropertyData, setGeneratedCopy } = usePropertyStore();
   const { addMediaItem, addClip, updateTotalDuration, clearTimelineAndMedia } = useEditorStore();
+  const setAutomationRequest = useAutomationStore((s) => s.setRequest);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -473,6 +483,23 @@ export const PropertyScanner = () => {
       return;
     }
 
+    // Se automação ativa, validar data/hora e registrar pedido
+    if (autoEnabled) {
+      if (!scheduleDate) {
+        toast({ title: 'Data ausente', description: 'Escolha a data do agendamento', variant: 'destructive' });
+        return;
+      }
+      const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
+      const due = new Date(scheduleDate);
+      due.setHours(hh || 0, mm || 0, 0, 0);
+      if (due.getTime() < Date.now()) {
+        toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
+        return;
+      }
+      setAutomationRequest(due.toISOString());
+      toast({ title: '🤖 Automação armada', description: `Agendamento previsto: ${format(due, 'dd/MM/yyyy HH:mm')}` });
+    }
+
     setIsScanning(true);
     try {
       // Extrair código de referência da URL (após o último -)
@@ -708,14 +735,48 @@ export const PropertyScanner = () => {
         <h2 className="text-sm font-semibold">Escanear Imóvel</h2>
         <span className="text-[11px] text-muted-foreground hidden sm:inline">Cole a URL para extrair dados e fotos</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://www.vendebens.com.br/imoveis/..."
           disabled={isScanning}
-          className="h-8 text-xs"
+          className="h-8 text-xs flex-1 min-w-[200px]"
         />
+        {autoEnabled && (
+          <>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn('h-8 text-xs', !scheduleDate && 'text-muted-foreground')}
+                  disabled={isScanning}
+                >
+                  <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+                  {scheduleDate ? format(scheduleDate, 'dd/MM/yyyy') : 'Data'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduleDate}
+                  onSelect={setScheduleDate}
+                  initialFocus
+                  disabled={(d) => d < new Date(new Date().toDateString())}
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input
+              type="time"
+              value={scheduleTime}
+              onChange={(e) => setScheduleTime(e.target.value)}
+              disabled={isScanning}
+              className="h-8 text-xs w-[110px]"
+            />
+          </>
+        )}
         <Button onClick={handleScan} disabled={isScanning} size="sm">
           {isScanning ? (
             <>
@@ -730,6 +791,22 @@ export const PropertyScanner = () => {
           )}
         </Button>
       </div>
+      <label className="flex items-start gap-2 pt-1 cursor-pointer text-xs">
+        <Checkbox
+          checked={autoEnabled}
+          onCheckedChange={(v) => setAutoEnabled(!!v)}
+          disabled={isScanning}
+          className="mt-0.5"
+        />
+        <span className="flex-1">
+          <span className="flex items-center gap-1 font-medium">
+            <Zap className="w-3 h-3 text-primary" /> Automação completa
+          </span>
+          <span className="text-muted-foreground block">
+            Escaneia, edita, adiciona música, gera roteiro+legenda+locução, renderiza e agenda nos 3 canais na data definida.
+          </span>
+        </span>
+      </label>
     </div>
   );
 };
