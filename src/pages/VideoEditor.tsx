@@ -46,6 +46,7 @@ const VideoEditor = () => {
       
       <Timeline />
       <AutoPilot />
+      <AutomationOverlay />
     </div>
   );
 };
