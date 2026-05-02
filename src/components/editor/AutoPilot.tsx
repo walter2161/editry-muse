@@ -376,6 +376,7 @@ function chainNextBatchItem(resetAutomation: () => void) {
     description: next.url,
   });
   resetAutomation();
+  try { sessionStorage.setItem('batch-pending-scan', JSON.stringify(next)); } catch {}
   setTimeout(() => {
     const trigger = (window as any).__triggerScan as
       | ((url: string, dueIso: string) => void)
@@ -383,7 +384,8 @@ function chainNextBatchItem(resetAutomation: () => void) {
     if (trigger) {
       trigger(next.url, next.dueAtIso);
     } else {
-      toast.error('Scanner indisponível. Volte para a página inicial para continuar o lote.');
+      // Scanner não montado (estamos no /editor). Voltar para home para o auto-resume disparar.
+      window.location.assign('/');
     }
   }, 2500);
 }
