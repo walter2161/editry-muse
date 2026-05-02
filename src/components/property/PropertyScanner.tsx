@@ -483,8 +483,9 @@ export const PropertyScanner = () => {
     }
   };
 
-  const handleScan = async () => {
-    if (!url.trim()) {
+  const handleScan = async (overrideUrl?: string, overrideDueIso?: string) => {
+    const targetUrl = (overrideUrl ?? url).trim();
+    if (!targetUrl) {
       toast({
         title: 'URL vazia',
         description: 'Digite a URL do imóvel',
@@ -493,29 +494,35 @@ export const PropertyScanner = () => {
       return;
     }
 
-    // Se automação ativa, validar data/hora e registrar pedido
-    if (autoEnabled) {
-      if (!scheduleDate) {
-        toast({ title: 'Data ausente', description: 'Escolha a data do agendamento', variant: 'destructive' });
-        return;
+    // Se automação ativa (via UI ou via batch override), validar e registrar pedido
+    const isAutoFromBatch = !!overrideDueIso;
+    if (autoEnabled || isAutoFromBatch) {
+      let dueIso = overrideDueIso;
+      if (!dueIso) {
+        if (!scheduleDate) {
+          toast({ title: 'Data ausente', description: 'Escolha a data do agendamento', variant: 'destructive' });
+          return;
+        }
+        const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
+        const due = new Date(scheduleDate);
+        due.setHours(hh || 0, mm || 0, 0, 0);
+        if (due.getTime() < Date.now()) {
+          toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
+          return;
+        }
+        dueIso = due.toISOString();
       }
-      const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
-      const due = new Date(scheduleDate);
-      due.setHours(hh || 0, mm || 0, 0, 0);
-      if (due.getTime() < Date.now()) {
-        toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
-        return;
-      }
-      setAutomationRequest(due.toISOString());
-      toast({ title: '🤖 Automação armada', description: `Agendamento previsto: ${format(due, 'dd/MM/yyyy HH:mm')}` });
+      setAutomationRequest(dueIso);
+      toast({ title: '🤖 Automação armada', description: `Agendamento previsto: ${format(new Date(dueIso), 'dd/MM/yyyy HH:mm')}` });
     }
 
     setIsScanning(true);
     try {
+      const cleanUrl = targetUrl;
       // Extrair código de referência da URL (após o último -)
-      const urlParts = url.split('-');
+      const urlParts = cleanUrl.split('-');
       const referencia = urlParts[urlParts.length - 1].split('?')[0].split('#')[0] || '';
-      
+
       toast({
         title: 'Escaneando...',
         description: 'Buscando informações do imóvel',
