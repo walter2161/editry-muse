@@ -793,7 +793,7 @@ export const PropertyScanner = () => {
             />
           </>
         )}
-        <Button onClick={handleScan} disabled={isScanning} size="sm">
+        <Button onClick={() => handleScan()} disabled={isScanning} size="sm">
           {isScanning ? (
             <>
               <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
