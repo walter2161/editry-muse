@@ -529,7 +529,6 @@ export const PropertyScanner = () => {
       });
 
       // Fetch da página usando múltiplos proxies CORS (fallback automático)
-      const cleanUrl = url.trim();
       const candidates = [
         `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanUrl)}`,
         `https://r.jina.ai/http://${cleanUrl.replace(/^https?:\/\//, '')}`,
