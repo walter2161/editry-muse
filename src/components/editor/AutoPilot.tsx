@@ -125,11 +125,16 @@ export const AutoPilot = () => {
 
         setStep('done');
         toast.success('✅ Automação concluída! Vídeo agendado nos 3 canais.');
-        setTimeout(() => reset(), 5000);
+        // Avançar fila de lote (se existir) e disparar próximo
+        ranRef.current = false;
+        chainNextBatchItem(reset);
       } catch (err: any) {
         console.error('AutoPilot error:', err);
         setStep('error', err?.message || 'Erro desconhecido');
         toast.error(`Automação falhou: ${err?.message || 'erro'}`);
+        // Mesmo em caso de erro, tentar avançar fila para não travar tudo
+        ranRef.current = false;
+        chainNextBatchItem(reset);
       }
     };
 
