@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, CalendarIcon, Zap } from 'lucide-react';
+import { Loader2, Search, CalendarIcon, Zap, ListOrdered, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePropertyStore, PropertyData } from '@/store/propertyStore';
 import { useEditorStore, MediaItem } from '@/store/editorStore';
 import { useAutomationStore } from '@/store/automationStore';
+import { useBatchStore } from '@/store/batchStore';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -102,9 +104,17 @@ export const PropertyScanner = () => {
   const [autoEnabled, setAutoEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [scheduleTime, setScheduleTime] = useState('10:00');
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchText, setBatchText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { setPropertyData, setGeneratedCopy } = usePropertyStore();
   const { addMediaItem, addClip, updateTotalDuration, clearTimelineAndMedia } = useEditorStore();
   const setAutomationRequest = useAutomationStore((s) => s.setRequest);
+  const setBatchQueue = useBatchStore((s) => s.setQueue);
+  const batchQueue = useBatchStore((s) => s.queue);
+  const batchTotal = useBatchStore((s) => s.total);
+  const batchCurrentIndex = useBatchStore((s) => s.currentIndex);
+  const resetBatch = useBatchStore((s) => s.reset);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -473,8 +483,9 @@ export const PropertyScanner = () => {
     }
   };
 
-  const handleScan = async () => {
-    if (!url.trim()) {
+  const handleScan = async (overrideUrl?: string, overrideDueIso?: string) => {
+    const targetUrl = (overrideUrl ?? url).trim();
+    if (!targetUrl) {
       toast({
         title: 'URL vazia',
         description: 'Digite a URL do imóvel',
@@ -483,36 +494,41 @@ export const PropertyScanner = () => {
       return;
     }
 
-    // Se automação ativa, validar data/hora e registrar pedido
-    if (autoEnabled) {
-      if (!scheduleDate) {
-        toast({ title: 'Data ausente', description: 'Escolha a data do agendamento', variant: 'destructive' });
-        return;
+    // Se automação ativa (via UI ou via batch override), validar e registrar pedido
+    const isAutoFromBatch = !!overrideDueIso;
+    if (autoEnabled || isAutoFromBatch) {
+      let dueIso = overrideDueIso;
+      if (!dueIso) {
+        if (!scheduleDate) {
+          toast({ title: 'Data ausente', description: 'Escolha a data do agendamento', variant: 'destructive' });
+          return;
+        }
+        const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
+        const due = new Date(scheduleDate);
+        due.setHours(hh || 0, mm || 0, 0, 0);
+        if (due.getTime() < Date.now()) {
+          toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
+          return;
+        }
+        dueIso = due.toISOString();
       }
-      const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
-      const due = new Date(scheduleDate);
-      due.setHours(hh || 0, mm || 0, 0, 0);
-      if (due.getTime() < Date.now()) {
-        toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
-        return;
-      }
-      setAutomationRequest(due.toISOString());
-      toast({ title: '🤖 Automação armada', description: `Agendamento previsto: ${format(due, 'dd/MM/yyyy HH:mm')}` });
+      setAutomationRequest(dueIso);
+      toast({ title: '🤖 Automação armada', description: `Agendamento previsto: ${format(new Date(dueIso), 'dd/MM/yyyy HH:mm')}` });
     }
 
     setIsScanning(true);
     try {
+      const cleanUrl = targetUrl;
       // Extrair código de referência da URL (após o último -)
-      const urlParts = url.split('-');
+      const urlParts = cleanUrl.split('-');
       const referencia = urlParts[urlParts.length - 1].split('?')[0].split('#')[0] || '';
-      
+
       toast({
         title: 'Escaneando...',
         description: 'Buscando informações do imóvel',
       });
 
       // Fetch da página usando múltiplos proxies CORS (fallback automático)
-      const cleanUrl = url.trim();
       const candidates = [
         `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanUrl)}`,
         `https://r.jina.ai/http://${cleanUrl.replace(/^https?:\/\//, '')}`,
@@ -729,6 +745,80 @@ export const PropertyScanner = () => {
     }
   };
 
+  // Expor função de scan globalmente para o AutoPilot encadear o próximo item da fila
+  useEffect(() => {
+    (window as any).__triggerScan = (scanUrl: string, dueIso: string) => handleScan(scanUrl, dueIso);
+    return () => { delete (window as any).__triggerScan; };
+  }, [scheduleDate, scheduleTime, autoEnabled, url]);
+
+  // Auto-resume: ao montar, se houver intent persistido (vindo de outro tab/route), disparar scan
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('batch-pending-scan');
+      if (!raw) return;
+      sessionStorage.removeItem('batch-pending-scan');
+      const next = JSON.parse(raw) as { url: string; dueAtIso: string };
+      if (!next?.url || !next?.dueAtIso) return;
+      setUrl(next.url);
+      setTimeout(() => handleScan(next.url, next.dueAtIso), 500);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const parseUrlList = (raw: string): string[] => {
+    return raw
+      .split(/[\n,;\s]+/)
+      .map((s) => s.trim())
+      .filter((s) => /^https?:\/\//i.test(s));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      setBatchText(text);
+      const urls = parseUrlList(text);
+      toast({ title: 'Arquivo carregado', description: `${urls.length} URLs detectadas` });
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleStartBatch = () => {
+    const urls = parseUrlList(batchText);
+    if (urls.length === 0) {
+      toast({ title: 'Lista vazia', description: 'Cole ou envie pelo menos 1 URL', variant: 'destructive' });
+      return;
+    }
+    if (!scheduleDate) {
+      toast({ title: 'Data inicial ausente', description: 'Defina a data do primeiro post', variant: 'destructive' });
+      return;
+    }
+    const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
+    const firstDue = new Date(scheduleDate);
+    firstDue.setHours(hh || 0, mm || 0, 0, 0);
+    if (firstDue.getTime() < Date.now()) {
+      toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
+      return;
+    }
+    const items = urls.map((u, i) => {
+      const d = new Date(firstDue);
+      d.setDate(d.getDate() + i);
+      return { url: u, dueAtIso: d.toISOString() };
+    });
+    setBatchQueue(items);
+    toast({
+      title: '📋 Lote iniciado',
+      description: `${items.length} imóveis. 1º em ${format(firstDue, 'dd/MM/yyyy HH:mm')}`,
+    });
+    const first = items[0];
+    setBatchOpen(false);
+    setUrl(first.url);
+    handleScan(first.url, first.dueAtIso);
+  };
+
   return (
     <div className="space-y-2 p-3 bg-card rounded-md border">
       <div className="flex items-center justify-between gap-2">
@@ -777,7 +867,7 @@ export const PropertyScanner = () => {
             />
           </>
         )}
-        <Button onClick={handleScan} disabled={isScanning} size="sm">
+        <Button onClick={() => handleScan()} disabled={isScanning} size="sm">
           {isScanning ? (
             <>
               <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
@@ -807,6 +897,100 @@ export const PropertyScanner = () => {
           </span>
         </span>
       </label>
+
+      {/* Status do lote em andamento */}
+      {batchTotal > 0 && batchQueue.length > 0 && (
+        <div className="flex items-center justify-between gap-2 mt-1 p-2 rounded-md bg-primary/10 border border-primary/30 text-xs">
+          <span className="font-medium">
+            📋 Lote em execução: {batchCurrentIndex + 1}/{batchTotal} • restantes: {batchQueue.length}
+          </span>
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { resetBatch(); toast({ title: 'Lote cancelado' }); }}>
+            Cancelar lote
+          </Button>
+        </div>
+      )}
+
+      {/* Acesso ao módulo de lote */}
+      <div className="pt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={() => setBatchOpen((v) => !v)}
+          disabled={isScanning}
+        >
+          <ListOrdered className="w-3.5 h-3.5 mr-1.5" />
+          {batchOpen ? 'Fechar lista de URLs' : 'Lote de URLs (1 post/dia)'}
+        </Button>
+      </div>
+
+      {batchOpen && (
+        <div className="space-y-2 p-2 rounded-md border bg-muted/30">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-xs font-medium">Lista de URLs (uma por linha)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="w-3 h-3 mr-1" /> Importar .txt
+            </Button>
+          </div>
+          <Textarea
+            value={batchText}
+            onChange={(e) => setBatchText(e.target.value)}
+            placeholder={'https://...\nhttps://...\nhttps://...'}
+            className="min-h-[110px] text-xs font-mono"
+            disabled={isScanning}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-muted-foreground flex-1">
+              {parseUrlList(batchText).length} URL(s) válidas. Cada uma será processada e agendada 1 por dia, mesmo horário.
+            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn('h-7 text-xs', !scheduleDate && 'text-muted-foreground')}
+                  disabled={isScanning}
+                >
+                  <CalendarIcon className="w-3 h-3 mr-1" />
+                  {scheduleDate ? format(scheduleDate, 'dd/MM/yyyy') : 'Data inicial'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduleDate}
+                  onSelect={setScheduleDate}
+                  initialFocus
+                  disabled={(d) => d < new Date(new Date().toDateString())}
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input
+              type="time"
+              value={scheduleTime}
+              onChange={(e) => setScheduleTime(e.target.value)}
+              disabled={isScanning}
+              className="h-7 text-xs w-[100px]"
+            />
+            <Button size="sm" className="h-7 text-xs" onClick={handleStartBatch} disabled={isScanning}>
+              <Zap className="w-3 h-3 mr-1" /> Iniciar lote
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

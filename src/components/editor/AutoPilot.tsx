@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAutomationStore } from '@/store/automationStore';
 import { usePropertyStore } from '@/store/propertyStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useBatchStore } from '@/store/batchStore';
 
 
 const LOCAL_SOUNDTRACK = {
@@ -124,11 +125,16 @@ export const AutoPilot = () => {
 
         setStep('done');
         toast.success('✅ Automação concluída! Vídeo agendado nos 3 canais.');
-        setTimeout(() => reset(), 5000);
+        // Avançar fila de lote (se existir) e disparar próximo
+        ranRef.current = false;
+        chainNextBatchItem(reset);
       } catch (err: any) {
         console.error('AutoPilot error:', err);
         setStep('error', err?.message || 'Erro desconhecido');
         toast.error(`Automação falhou: ${err?.message || 'erro'}`);
+        // Mesmo em caso de erro, tentar avançar fila para não travar tudo
+        ranRef.current = false;
+        chainNextBatchItem(reset);
       }
     };
 
@@ -355,3 +361,32 @@ async function scheduleAllChannels(blob: Blob, filename: string, dueAtIso: strin
 
   if (okCount === 0) throw new Error(`Nenhum canal agendado. ${failures.join(' | ')}`);
 }
+
+function chainNextBatchItem(resetAutomation: () => void) {
+  const batch = useBatchStore.getState();
+  batch.advance();
+  const remaining = useBatchStore.getState().queue;
+  if (remaining.length === 0) {
+    toast.success('🏁 Lote finalizado! Todos os imóveis processados.');
+    setTimeout(() => resetAutomation(), 5000);
+    return;
+  }
+  const next = remaining[0];
+  toast.message(`▶️ Próximo do lote (${useBatchStore.getState().currentIndex + 1}/${batch.total})`, {
+    description: next.url,
+  });
+  resetAutomation();
+  try { sessionStorage.setItem('batch-pending-scan', JSON.stringify(next)); } catch {}
+  setTimeout(() => {
+    const trigger = (window as any).__triggerScan as
+      | ((url: string, dueIso: string) => void)
+      | undefined;
+    if (trigger) {
+      trigger(next.url, next.dueAtIso);
+    } else {
+      // Scanner não montado (estamos no /editor). Voltar para home para o auto-resume disparar.
+      window.location.assign('/');
+    }
+  }, 2500);
+}
+
