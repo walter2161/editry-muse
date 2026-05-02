@@ -5,6 +5,7 @@ import { VideoPreview } from "@/components/editor/VideoPreview";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { Timeline } from "@/components/editor/Timeline";
 import { AutoPilot } from "@/components/editor/AutoPilot";
+import { AutomationOverlay } from "@/components/editor/AutomationOverlay";
 import { usePropertyStore } from "@/store/propertyStore";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { syncThumbnailFromProperty } from "@/lib/syncThumbnailFromProperty";
