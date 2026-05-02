@@ -104,9 +104,17 @@ export const PropertyScanner = () => {
   const [autoEnabled, setAutoEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [scheduleTime, setScheduleTime] = useState('10:00');
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchText, setBatchText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { setPropertyData, setGeneratedCopy } = usePropertyStore();
   const { addMediaItem, addClip, updateTotalDuration, clearTimelineAndMedia } = useEditorStore();
   const setAutomationRequest = useAutomationStore((s) => s.setRequest);
+  const setBatchQueue = useBatchStore((s) => s.setQueue);
+  const batchQueue = useBatchStore((s) => s.queue);
+  const batchTotal = useBatchStore((s) => s.total);
+  const batchCurrentIndex = useBatchStore((s) => s.currentIndex);
+  const resetBatch = useBatchStore((s) => s.reset);
   const { toast } = useToast();
   const navigate = useNavigate();
 
