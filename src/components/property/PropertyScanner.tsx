@@ -745,6 +745,66 @@ export const PropertyScanner = () => {
     }
   };
 
+  // Expor função de scan globalmente para o AutoPilot encadear o próximo item da fila
+  useEffect(() => {
+    (window as any).__triggerScan = (scanUrl: string, dueIso: string) => handleScan(scanUrl, dueIso);
+    return () => { delete (window as any).__triggerScan; };
+  }, [scheduleDate, scheduleTime, autoEnabled, url]);
+
+  const parseUrlList = (raw: string): string[] => {
+    return raw
+      .split(/[\n,;\s]+/)
+      .map((s) => s.trim())
+      .filter((s) => /^https?:\/\//i.test(s));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      setBatchText(text);
+      const urls = parseUrlList(text);
+      toast({ title: 'Arquivo carregado', description: `${urls.length} URLs detectadas` });
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleStartBatch = () => {
+    const urls = parseUrlList(batchText);
+    if (urls.length === 0) {
+      toast({ title: 'Lista vazia', description: 'Cole ou envie pelo menos 1 URL', variant: 'destructive' });
+      return;
+    }
+    if (!scheduleDate) {
+      toast({ title: 'Data inicial ausente', description: 'Defina a data do primeiro post', variant: 'destructive' });
+      return;
+    }
+    const [hh, mm] = scheduleTime.split(':').map((n) => parseInt(n, 10));
+    const firstDue = new Date(scheduleDate);
+    firstDue.setHours(hh || 0, mm || 0, 0, 0);
+    if (firstDue.getTime() < Date.now()) {
+      toast({ title: 'Data inválida', description: 'A data/hora deve estar no futuro', variant: 'destructive' });
+      return;
+    }
+    const items = urls.map((u, i) => {
+      const d = new Date(firstDue);
+      d.setDate(d.getDate() + i);
+      return { url: u, dueAtIso: d.toISOString() };
+    });
+    setBatchQueue(items);
+    toast({
+      title: '📋 Lote iniciado',
+      description: `${items.length} imóveis. 1º em ${format(firstDue, 'dd/MM/yyyy HH:mm')}`,
+    });
+    const first = items[0];
+    setBatchOpen(false);
+    setUrl(first.url);
+    handleScan(first.url, first.dueAtIso);
+  };
+
   return (
     <div className="space-y-2 p-3 bg-card rounded-md border">
       <div className="flex items-center justify-between gap-2">
