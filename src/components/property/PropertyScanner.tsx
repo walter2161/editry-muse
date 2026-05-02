@@ -751,6 +751,20 @@ export const PropertyScanner = () => {
     return () => { delete (window as any).__triggerScan; };
   }, [scheduleDate, scheduleTime, autoEnabled, url]);
 
+  // Auto-resume: ao montar, se houver intent persistido (vindo de outro tab/route), disparar scan
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('batch-pending-scan');
+      if (!raw) return;
+      sessionStorage.removeItem('batch-pending-scan');
+      const next = JSON.parse(raw) as { url: string; dueAtIso: string };
+      if (!next?.url || !next?.dueAtIso) return;
+      setUrl(next.url);
+      setTimeout(() => handleScan(next.url, next.dueAtIso), 500);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const parseUrlList = (raw: string): string[] => {
     return raw
       .split(/[\n,;\s]+/)
