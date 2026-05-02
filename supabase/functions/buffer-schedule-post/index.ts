@@ -153,14 +153,10 @@ Deno.serve(async (req) => {
           // (handled in `text` below — see note)
         }
       } else if (service === "tiktok") {
-        // TikTokPostMetadataInput only accepts these fields (camelCase):
-        // disableComment, disableDuet, disableStitch, privacyOption
-        metadata.tiktok = {
-          disableComment: opt?.tiktokDisableComments ?? false,
-          disableDuet: opt?.tiktokDisableDuet ?? false,
-          disableStitch: opt?.tiktokDisableStitch ?? false,
-          privacyOption: opt?.tiktokPrivacy ?? "PUBLIC_TO_EVERYONE",
-        };
+        // TikTokPostMetadataInput only accepts `title` (per Buffer GraphQL schema).
+        // Privacy/duet/stitch/comments are managed in the user's TikTok account settings,
+        // NOT via Buffer's API. Sending unknown fields causes BAD_USER_INPUT errors.
+        // Skip metadata entirely for TikTok video posts.
       }
 
       const input: Record<string, unknown> = {
