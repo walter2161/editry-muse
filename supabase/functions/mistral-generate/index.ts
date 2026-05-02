@@ -110,41 +110,28 @@ function buildCopyPrompt(p: PropertyPayload) {
 
   const facts = buildFactsBlock(p);
 
-  return `Você é um copywriter sênior de imobiliária. Escreva uma COPY LONGA, RICA e PERSUASIVA para Instagram/Facebook/TikTok (entre 220 e 320 palavras), pronta pra colar no Buffer.
+  return `Você é um copywriter sênior de imobiliária. Escreva uma COPY CURTA para legenda de Instagram Reels / TikTok / Facebook Reels.
+
+⚠️ LIMITE ABSOLUTO: NO MÁXIMO 199 CARACTERES (contando espaços, emojis, quebras de linha e hashtags). TikTok e Instagram Reels rejeitam legendas maiores. Conte os caracteres antes de responder. Se passar de 199, REESCREVA mais curto.
 
 ═════════ FATOS OFICIAIS DO IMÓVEL — PRIORIDADE MÁXIMA ═════════
 ${facts}
 
-═════════ TEXTO BRUTO DA PÁGINA DO IMÓVEL (use para extrair detalhes reais) ═════════
+═════════ TEXTO BRUTO DA PÁGINA (apenas referência) ═════════
 ${cleanedContext || '(sem contexto)'}
 
-═════════ ESTRUTURA OBRIGATÓRIA ═════════
-1) HEADLINE (1 linha) com 1–2 emojis: tipo + transação + bairro + chamada de impacto.
-(linha em branco)
-2) PARÁGRAFO DE APRESENTAÇÃO (3–4 frases): contextualize o imóvel, cite localização completa e crie desejo.
-(linha em branco)
-3) BLOCO "🔎 O QUE ESSE IMÓVEL OFERECE:" lista bullet usando ✅ ou 🛏️ 🚿 🚗 📐 cobrindo TODOS os números e TODOS os diferenciais (um por linha, com benefício prático ao lado).
-(linha em branco)
-4) BLOCO "💰 CONDIÇÕES COMERCIAIS:" lista valor, ${p.valorEntrada ? 'entrada facilitada, ' : ''}${p.condominio ? 'condomínio, ' : ''}${p.iptu ? 'IPTU, ' : ''}aceita financiamento bancário 🏦 e FGTS.
-(linha em branco)
-5) BLOCO "📍 LOCALIZAÇÃO:" 2 frases sobre o bairro/cidade (proximidade de comércio, escolas, praia, transporte etc).
-(linha em branco)
-6) CTA forte: "📲 Chame agora no WhatsApp ${p.telefoneCorretor || '(coloque seu número)'} e agende sua visita!"
-(linha em branco)
-7) ASSINATURA:
-🏠 ${p.nomeCorretor || 'Vendebens Imóveis'}
-📋 REF.: ${p.referencia || ''}
-${p.creci || 'CRECI: 25571-J'}
-(linha em branco)
-8) HASHTAGS (10–14): #imoveis #${cidadeTag} #${bairroTag} #${tipoTag} #${trxTag}imoveis #imobiliaria #realestate #investimento #${cidadeTag}imoveis #${tipoTag}aVenda + variações relevantes.
+═════════ ESTRUTURA (texto compacto, sem listas longas) ═════════
+- 1 frase de impacto com 1–2 emojis: tipo + bairro/cidade + gancho.
+- 1 frase com os números essenciais (quartos, vagas, área) e o valor.
+- CTA curto com WhatsApp ${p.telefoneCorretor || ''}.
+- 2 a 4 hashtags relevantes no final (ex: #${cidadeTag} #${bairroTag} #${tipoTag} #${trxTag}).
 
-═════════ REGRAS ═════════
-- Use TODOS os dados, sem inventar.
-- Tom profissional, entusiasmado e humano. Emojis estratégicos.
-- NUNCA omita CRECI, empresa, referência e WhatsApp.
-- O valor anunciado precisa bater EXATAMENTE com VALOR OFICIAL.
-- A copy não pode inventar cômodos, acabamento, vista, sacada ou benefícios não presentes nos fatos ou no texto bruto.
-- Retorne APENAS o texto final pronto pra colar.`;
+═════════ REGRAS CRÍTICAS ═════════
+- MÁXIMO 199 CARACTERES no total. Sem exceção.
+- Não use blocos longos, listas com bullets, nem assinatura completa.
+- Não invente cômodos, acabamento, vista ou benefícios ausentes.
+- O valor precisa bater EXATAMENTE com VALOR OFICIAL.
+- Retorne APENAS a legenda final pronta pra colar, sem aspas e sem comentários.`;
 }
 
 Deno.serve(async (req) => {
