@@ -361,3 +361,30 @@ async function scheduleAllChannels(blob: Blob, filename: string, dueAtIso: strin
 
   if (okCount === 0) throw new Error(`Nenhum canal agendado. ${failures.join(' | ')}`);
 }
+
+function chainNextBatchItem(resetAutomation: () => void) {
+  const batch = useBatchStore.getState();
+  batch.advance();
+  const remaining = useBatchStore.getState().queue;
+  if (remaining.length === 0) {
+    toast.success('🏁 Lote finalizado! Todos os imóveis processados.');
+    setTimeout(() => resetAutomation(), 5000);
+    return;
+  }
+  const next = remaining[0];
+  toast.message(`▶️ Próximo do lote (${useBatchStore.getState().currentIndex + 1}/${batch.total})`, {
+    description: next.url,
+  });
+  resetAutomation();
+  setTimeout(() => {
+    const trigger = (window as any).__triggerScan as
+      | ((url: string, dueIso: string) => void)
+      | undefined;
+    if (trigger) {
+      trigger(next.url, next.dueAtIso);
+    } else {
+      toast.error('Scanner indisponível. Volte para a página inicial para continuar o lote.');
+    }
+  }, 2500);
+}
+
