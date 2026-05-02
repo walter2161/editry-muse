@@ -883,6 +883,100 @@ export const PropertyScanner = () => {
           </span>
         </span>
       </label>
+
+      {/* Status do lote em andamento */}
+      {batchTotal > 0 && batchQueue.length > 0 && (
+        <div className="flex items-center justify-between gap-2 mt-1 p-2 rounded-md bg-primary/10 border border-primary/30 text-xs">
+          <span className="font-medium">
+            📋 Lote em execução: {batchCurrentIndex + 1}/{batchTotal} • restantes: {batchQueue.length}
+          </span>
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { resetBatch(); toast({ title: 'Lote cancelado' }); }}>
+            Cancelar lote
+          </Button>
+        </div>
+      )}
+
+      {/* Acesso ao módulo de lote */}
+      <div className="pt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={() => setBatchOpen((v) => !v)}
+          disabled={isScanning}
+        >
+          <ListOrdered className="w-3.5 h-3.5 mr-1.5" />
+          {batchOpen ? 'Fechar lista de URLs' : 'Lote de URLs (1 post/dia)'}
+        </Button>
+      </div>
+
+      {batchOpen && (
+        <div className="space-y-2 p-2 rounded-md border bg-muted/30">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-xs font-medium">Lista de URLs (uma por linha)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="w-3 h-3 mr-1" /> Importar .txt
+            </Button>
+          </div>
+          <Textarea
+            value={batchText}
+            onChange={(e) => setBatchText(e.target.value)}
+            placeholder={'https://...\nhttps://...\nhttps://...'}
+            className="min-h-[110px] text-xs font-mono"
+            disabled={isScanning}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-muted-foreground flex-1">
+              {parseUrlList(batchText).length} URL(s) válidas. Cada uma será processada e agendada 1 por dia, mesmo horário.
+            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn('h-7 text-xs', !scheduleDate && 'text-muted-foreground')}
+                  disabled={isScanning}
+                >
+                  <CalendarIcon className="w-3 h-3 mr-1" />
+                  {scheduleDate ? format(scheduleDate, 'dd/MM/yyyy') : 'Data inicial'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={scheduleDate}
+                  onSelect={setScheduleDate}
+                  initialFocus
+                  disabled={(d) => d < new Date(new Date().toDateString())}
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input
+              type="time"
+              value={scheduleTime}
+              onChange={(e) => setScheduleTime(e.target.value)}
+              disabled={isScanning}
+              className="h-7 text-xs w-[100px]"
+            />
+            <Button size="sm" className="h-7 text-xs" onClick={handleStartBatch} disabled={isScanning}>
+              <Zap className="w-3 h-3 mr-1" /> Iniciar lote
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
