@@ -178,7 +178,14 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
-    const text: string = data?.choices?.[0]?.message?.content?.trim() || '';
+    let text: string = data?.choices?.[0]?.message?.content?.trim() || '';
+
+    // Hard cap: copy precisa caber em TikTok/Instagram (máx 199 caracteres)
+    if (mode === 'copy' && text.length > 199) {
+      const slice = text.slice(0, 199);
+      const lastSpace = slice.lastIndexOf(' ');
+      text = (lastSpace > 150 ? slice.slice(0, lastSpace) : slice).trim();
+    }
 
     return new Response(JSON.stringify({ text }), {
       status: 200,
