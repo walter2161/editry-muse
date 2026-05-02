@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAutomationStore } from '@/store/automationStore';
 import { usePropertyStore } from '@/store/propertyStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useBatchStore } from '@/store/batchStore';
 
 
 const LOCAL_SOUNDTRACK = {
