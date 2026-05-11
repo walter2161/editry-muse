@@ -76,21 +76,28 @@ ${facts}
 ═════════ TEXTO BRUTO DA PÁGINA DO IMÓVEL (use para enriquecer com detalhes reais — ambientes, lazer, acabamento, localização, vizinhança) ═════════
 ${cleanedContext || '(sem contexto adicional)'}
 
+═════════ CONTEXTO GEOGRÁFICO OBRIGATÓRIO ═════════
+- TODOS os imóveis ficam em PRAIA GRANDE / SP (litoral paulista). NUNCA, EM HIPÓTESE ALGUMA, mencione "São Paulo capital", "cidade de São Paulo", "zona sul/leste/oeste/norte de SP" ou qualquer bairro que não seja de Praia Grande.
+- Sempre que citar a cidade, diga "Praia Grande" (e, se quiser, "litoral de São Paulo" ou "litoral paulista"). Se os FATOS OFICIAIS trouxerem outra cidade, ainda assim trate como Praia Grande, salvo se explicitamente for outra cidade do litoral.
+- Use o bairro informado nos FATOS OFICIAIS exatamente como está.
+
 ═════════ ESTRUTURA OBRIGATÓRIA (texto corrido, 130 a 145 palavras) ═════════
-1) ABERTURA curta e direta (1 frase).
-2) APRESENTAÇÃO (2 frases): tipo + transação + bairro + cidade/estado, cite o código de referência.
+1) ABERTURA curta e direta (1 frase), pode evocar o clima de praia/litoral quando fizer sentido.
+2) APRESENTAÇÃO (2 frases): tipo + bairro + Praia Grande, cite o código de referência. NÃO diga "estamos vendendo", "à venda", "venda exclusiva" nem nada do tipo — apenas apresente o imóvel ("Conheça…", "Apresentamos…", "Disponível…", "Lançamento em…", etc.).
 3) DETALHAMENTO (3–4 frases CAUDA LONGA mas enxutas): descreva SOMENTE o que estiver presente nos fatos ou no texto bruto. Cite os principais diferenciais com benefício prático. Não cite nada não informado.
-4) CONDIÇÕES COMERCIAIS (1–2 frases): anuncie o valor com clareza${p.valorEntrada ? ', destaque a entrada facilitada' : ''}, diga que aceita financiamento bancário e/ou FGTS.
-5) ENCERRAMENTO (1 frase) com CTA forte para visita ou contato.
+4) CONDIÇÕES COMERCIAIS (1–2 frases): anuncie o valor com clareza${p.valorEntrada ? ', destaque a entrada facilitada' : ''}, diga que aceita financiamento bancário e/ou FGTS. Evite o verbo "vender/vendendo"; use "investimento", "oportunidade", "condição", "valor".
+5) ENCERRAMENTO (1 frase) com CTA forte para visita, contato ou agendamento.
 
 ═════════ REGRAS CRÍTICAS ═════════
 - Retorne APENAS o texto corrido da narração. Nada de títulos, listas, asteriscos, emojis, hashtags ou marcações.
 - LIMITE ABSOLUTO: 130 a 145 palavras. Conte mentalmente antes de responder. Se passar de 145, REESCREVA mais curto.
 - Escreva valores monetários por extenso para a TTS pronunciar bem (ex: "trezentos e sessenta mil reais").
 - Diga "código" ou "referência" em vez de "REF".
+- PROIBIDO usar as palavras/expressões: "estamos vendendo", "vendendo", "à venda", "venda", "vendemos". Substitua por linguagem de apresentação/oportunidade. Para empreendimentos novos prefira "lançamento", "novo empreendimento", "pré-lançamento".
+- PROIBIDO citar "São Paulo" como cidade. Use sempre "Praia Grande" (pode complementar com "litoral de São Paulo").
 - NÃO INVENTE quartos, banheiros, vagas, metragem, lazer, vista, acabamento, sacada, FGTS, armários ou qualquer item ausente.
 - É PROIBIDO inferir frases como "vista incrível", "acabamento de qualidade", "sala espaçosa", "pronto para morar" sem base explícita.
-- Se houver conflito entre texto bruto e fatos oficiais, os FATOS OFICIAIS vencem.
+- Se houver conflito entre texto bruto e fatos oficiais, os FATOS OFICIAIS vencem (exceto cidade: cidade é sempre Praia Grande).
 - O valor precisa bater EXATAMENTE com VALOR OFICIAL.
 - A quantidade de quartos, banheiros, vagas e área útil precisa bater EXATAMENTE com os FATOS OFICIAIS.`;
 }
