@@ -113,13 +113,15 @@ function buildCopyPrompt(p: PropertyPayload) {
   const cidadeTag = (p.cidade || '').toLowerCase().replace(/\s+/g, '');
   const bairroTag = (p.bairro || '').toLowerCase().replace(/\s+/g, '');
   const tipoTag = (p.tipo || 'imovel').toLowerCase().replace(/\s+/g, '');
-  const trxTag = (p.transacao || 'venda').toLowerCase();
 
   const facts = buildFactsBlock(p);
 
   return `Você é um copywriter sênior de imobiliária. Escreva uma COPY CURTA para legenda de Instagram Reels / TikTok / Facebook Reels.
 
 ⚠️ LIMITE ABSOLUTO: NO MÁXIMO 199 CARACTERES (contando espaços, emojis, quebras de linha e hashtags). TikTok e Instagram Reels rejeitam legendas maiores. Conte os caracteres antes de responder. Se passar de 199, REESCREVA mais curto.
+
+═════════ CONTEXTO GEOGRÁFICO OBRIGATÓRIO ═════════
+- TODOS os imóveis ficam em PRAIA GRANDE / SP. NUNCA cite "São Paulo capital". Use sempre "Praia Grande".
 
 ═════════ FATOS OFICIAIS DO IMÓVEL — PRIORIDADE MÁXIMA ═════════
 ${facts}
@@ -128,13 +130,15 @@ ${facts}
 ${cleanedContext || '(sem contexto)'}
 
 ═════════ ESTRUTURA (texto compacto, sem listas longas) ═════════
-- 1 frase de impacto com 1–2 emojis: tipo + bairro/cidade + gancho.
+- 1 frase de impacto com 1–2 emojis: tipo + bairro + Praia Grande + gancho. NÃO use "à venda" / "vendendo".
 - 1 frase com os números essenciais (quartos, vagas, área) e o valor.
 - CTA curto com WhatsApp ${p.telefoneCorretor || ''}.
-- 2 a 4 hashtags relevantes no final (ex: #${cidadeTag} #${bairroTag} #${tipoTag} #${trxTag}).
+- 2 a 4 hashtags relevantes no final (ex: #praiagrande #${bairroTag} #${tipoTag} #litoralsp).
 
 ═════════ REGRAS CRÍTICAS ═════════
 - MÁXIMO 199 CARACTERES no total. Sem exceção.
+- PROIBIDO: "à venda", "vendendo", "estamos vendendo", "venda exclusiva". Prefira "oportunidade", "lançamento", "disponível", "conheça".
+- PROIBIDO citar "São Paulo" como cidade. Use "Praia Grande" (pode adicionar "litoral SP").
 - Não use blocos longos, listas com bullets, nem assinatura completa.
 - Não invente cômodos, acabamento, vista ou benefícios ausentes.
 - O valor precisa bater EXATAMENTE com VALOR OFICIAL.
