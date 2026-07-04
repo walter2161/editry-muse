@@ -62,9 +62,6 @@ export const ExportVideoDialog = () => {
     dimensions: { width: number; height: number },
   ): Promise<{ blob: Blob; filename: string }> => {
     const filename = buildExportFilename('mp4', dimensions);
-    const sourceLooksMp4 = blob.type.includes('mp4') && sourceName.toLowerCase().endsWith('.mp4');
-    if (sourceLooksMp4) return { blob: new Blob([blob], { type: 'video/mp4' }), filename };
-
     toast.message('Convertendo para MP4 compatível com Instagram/Facebook...');
     const ffmpeg = await loadFfmpeg();
     const inputName = sourceName.toLowerCase().endsWith('.webm') ? 'input.webm' : 'input.video';
