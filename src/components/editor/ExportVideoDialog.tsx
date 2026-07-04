@@ -16,6 +16,7 @@ import { useEditorStore } from "@/store/editorStore";
 import { useRenderedVideoStore } from "@/store/renderedVideoStore";
 import { ScheduleBufferDialog } from "./ScheduleBufferDialog";
 import { toast } from "sonner";
+import { drawThumbnailOverlay } from "@/lib/thumbnailRenderer";
 
 export const ExportVideoDialog = () => {
   const { clips, mediaItems, globalSettings, totalDuration, projectName, setCurrentTime, setIsPlaying, isPlaying, currentTime, trackStates, thumbnailData } = useEditorStore();
