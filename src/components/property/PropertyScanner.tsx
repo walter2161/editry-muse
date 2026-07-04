@@ -576,14 +576,14 @@ export const PropertyScanner = () => {
         throw new Error('Todos os proxies (allorigins/jina) falharam ou expiraram (30s cada)');
       }
       
-      const html = await response.text();
+      const html = await withTimeout(response.text(), 30000, 'Tempo limite ao ler o conteúdo da página do imóvel');
 
       // Texto/markdown via Jina pra alimentar a IA com a descrição completa do imóvel
       let pageContext = '';
       try {
         const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
         const jr = await fetchWithTimeout(jinaUrl, 20000);
-        if (jr.ok) pageContext = (await jr.text()).slice(0, 12000);
+        if (jr.ok) pageContext = (await withTimeout(jr.text(), 20000, 'Tempo limite ao ler contexto do imóvel')).slice(0, 12000);
       } catch (e) {
         console.warn('Jina context falhou/timeout:', e);
       }
@@ -771,6 +771,7 @@ export const PropertyScanner = () => {
             description: 'Algumas imagens não puderam ser carregadas',
             variant: 'destructive',
           });
+          if (isAutomationScan) throw error;
         }
       }
 
