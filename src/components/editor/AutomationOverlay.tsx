@@ -139,11 +139,14 @@ export const AutomationOverlay = () => {
 
         {/* Erro / Sucesso */}
         {isError && error && (
-          <div className="bg-destructive/15 border-t border-destructive/30 px-6 py-4">
+          <div className="bg-destructive/15 border-t border-destructive/30 px-6 py-4 space-y-3">
             <p className="text-sm text-destructive font-medium">Erro: {error}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Você já pode interagir com o app normalmente. Esta tela fechará automaticamente.
-            </p>
+            <button
+              onClick={() => reset()}
+              className="text-xs px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground hover:opacity-90"
+            >
+              Fechar
+            </button>
           </div>
         )}
         {isDone && (
@@ -151,6 +154,19 @@ export const AutomationOverlay = () => {
             <p className="text-sm text-green-300 font-medium">
               Vídeo agendado nos canais com sucesso! Você pode fechar esta aba.
             </p>
+          </div>
+        )}
+        {/* Cancelar manualmente (evita ficar preso) */}
+        {!isDone && !isError && (
+          <div className="border-t border-border px-6 py-3 flex justify-end">
+            <button
+              onClick={() => {
+                if (confirm('Cancelar automação em andamento?')) reset();
+              }}
+              className="text-xs px-3 py-1.5 rounded-md bg-muted text-muted-foreground hover:bg-muted/70"
+            >
+              Cancelar automação
+            </button>
           </div>
         )}
       </div>
