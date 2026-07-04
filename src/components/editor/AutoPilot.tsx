@@ -370,8 +370,10 @@ async function scheduleAllChannels(blob: Blob, filename: string, dueAtIso: strin
       });
       if (error) throw error;
       const r = (data?.results ?? [])[0];
-      if (r?.ok) {
+      const postId = (r?.result as any)?.post?.id;
+      if (r?.ok && postId) {
         okCount++;
+        console.log(`Buffer scheduled [${svc}]`, { channelId: ch.id, postId });
         toast.success(`✓ ${svc.toUpperCase()} agendado`);
       } else {
         // Extrair mensagem real do Buffer/GraphQL (pode estar em result.message ou result.errors)
@@ -379,6 +381,7 @@ async function scheduleAllChannels(blob: Blob, filename: string, dueAtIso: strin
         const gqlMsg = raw?.message
           || raw?.errors?.[0]?.message
           || raw?.errors?.[0]?.extensions?.code
+          || (r?.ok && !postId ? 'Buffer não retornou ID do post criado' : '')
           || JSON.stringify(raw)?.slice(0, 400)
           || 'erro';
         console.error(`Buffer schedule failed [${svc}]`, { channelId: ch.id, response: raw });

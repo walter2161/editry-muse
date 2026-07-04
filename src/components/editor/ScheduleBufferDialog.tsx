@@ -278,15 +278,22 @@ export const ScheduleBufferDialog = ({
           const results = (data?.results ?? []) as Array<{
             channelId: string;
             ok: boolean;
-            result: { message?: string } | unknown;
+            result: { message?: string; post?: { id?: string }; errors?: Array<{ message?: string; extensions?: { code?: string } }> } | unknown;
           }>;
           const r = results[0];
-          if (r?.ok) {
+          const result = r?.result as { message?: string; post?: { id?: string }; errors?: Array<{ message?: string; extensions?: { code?: string } }> } | undefined;
+          const postId = result?.post?.id;
+          if (r?.ok && postId) {
             okCount++;
+            console.log(`Buffer scheduled [${svc}]`, { channelId, postId });
             toast.success(`✓ ${svc.toUpperCase()} (${label}) agendado`);
           } else {
             failCount++;
-            const msg = (r?.result as { message?: string } | undefined)?.message ?? "Erro desconhecido";
+            const msg = result?.message
+              ?? result?.errors?.[0]?.message
+              ?? result?.errors?.[0]?.extensions?.code
+              ?? (r?.ok && !postId ? "Buffer não retornou ID do post criado" : "Erro desconhecido");
+            console.error(`Buffer schedule failed [${svc}]`, { channelId, response: r?.result });
             failures.push({ name: label, service: svc, message: msg });
             toast.error(`✗ ${svc.toUpperCase()} (${label}): ${msg}`);
           }

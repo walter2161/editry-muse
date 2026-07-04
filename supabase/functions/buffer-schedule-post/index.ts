@@ -199,8 +199,25 @@ Deno.serve(async (req) => {
       });
       const data = await res.json();
       const payload = data?.data?.createPost;
-      const ok = res.ok && payload && !payload.message && !data?.errors;
-      if (!ok) console.error("Buffer post error", channelId, JSON.stringify(data));
+      const postId = payload?.post?.id;
+      // Só considerar sucesso quando o Buffer devolver o ID real do post.
+      // Antes, qualquer objeto sem `message` era contado como sucesso, mesmo sem post criado.
+      const ok = res.ok && Boolean(postId) && !payload?.message && !data?.errors;
+      if (!ok) {
+        console.error(
+          "Buffer post error",
+          channelId,
+          JSON.stringify({
+            httpOk: res.ok,
+            status: res.status,
+            service,
+            postId: postId ?? null,
+            response: data,
+          }),
+        );
+      } else {
+        console.log("Buffer post scheduled", channelId, service, postId);
+      }
       results.push({ channelId, ok, result: payload ?? data });
     }
 
