@@ -13,7 +13,7 @@ const STEPS: { key: AutomationStep; label: string }[] = [
 ];
 
 export const AutomationOverlay = () => {
-  const { enabled, step, error, dueAtIso } = useAutomationStore();
+  const { enabled, step, error, dueAtIso, reset } = useAutomationStore();
   const [elapsed, setElapsed] = useState(0);
 
   // Bloquear tentativa de fechar a aba enquanto automação está rodando
