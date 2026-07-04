@@ -673,8 +673,20 @@ export const ExportVideoDialog = () => {
               return;
             }
 
+            const isNativeMp4 = mimeType.includes('mp4');
+            // Se o MediaRecorder já gravou MP4 (Chrome desktop), pula transcodificação
+            if (isNativeMp4) {
+              const filename = buildExportFilename('mp4', dimensions);
+              const mp4Blob = new Blob([blob], { type: 'video/mp4' });
+              setRendered(mp4Blob, filename);
+              toast.success("Vídeo renderizado! Use os botões para baixar ou agendar.");
+              setIsExporting(false);
+              setExportProgress(100);
+              resolve();
+              return;
+            }
             try {
-              const { blob: mp4Blob, filename } = await ensureMp4ForBuffer(blob, buildExportFilename(mimeType.includes('mp4') ? 'mp4' : 'webm', dimensions), dimensions);
+              const { blob: mp4Blob, filename } = await ensureMp4ForBuffer(blob, buildExportFilename('webm', dimensions), dimensions);
               setRendered(mp4Blob, filename);
               toast.success("Vídeo renderizado! Use os botões para baixar ou agendar.");
               setIsExporting(false);
@@ -682,9 +694,13 @@ export const ExportVideoDialog = () => {
               resolve();
               return;
             } catch (err) {
-              console.error('Falha na conversão para MP4', err);
-              toast.error("Não foi possível gerar MP4 compatível para agendamento");
+              console.error('Falha na conversão para MP4 via FFmpeg', err);
+              // Fallback: entrega o WebM mesmo assim (Buffer/edge tentará validar)
+              const filename = buildExportFilename('webm', dimensions);
+              setRendered(blob, filename);
+              toast.warning("Não foi possível transcodificar para MP4 no navegador. Vídeo WebM salvo — use 'Baixar' e envie manualmente se o agendamento falhar.");
               setIsExporting(false);
+              setExportProgress(100);
               resolve();
             }
           } catch (err) {
@@ -811,8 +827,13 @@ export const ExportVideoDialog = () => {
             unsub();
             if (state.filename.toLowerCase().endsWith('.mp4') && state.blob.type.includes('mp4')) {
               resolve({ blob: state.blob, filename: state.filename });
+            } else if (state.blob && state.filename) {
+              // Fallback: aceita webm para o AutoPilot poder tentar o agendamento
+              // e receber a mensagem exata de erro do Buffer/edge function.
+              console.warn('AutoPilot recebendo vídeo não-MP4', { filename: state.filename, type: state.blob.type });
+              resolve({ blob: state.blob, filename: state.filename });
             } else {
-              reject(new Error('Renderização não gerou MP4 compatível para Buffer'));
+              reject(new Error('Renderização não gerou arquivo válido'));
             }
           }
         });
