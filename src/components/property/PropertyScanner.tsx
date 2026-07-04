@@ -17,6 +17,19 @@ import { useBatchStore } from '@/store/batchStore';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
+const withTimeout = async <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 
 const parseCurrencyValue = (text: string): number | undefined => {
   const match = text.match(/R\$\s*([\d.]+(?:,\d{2})?)/i);
@@ -472,9 +485,13 @@ export const PropertyScanner = () => {
 
   const generateCopyWithAI = async (propertyData: Partial<PropertyData>) => {
     try {
-      const { data, error } = await supabase.functions.invoke('mistral-generate', {
-        body: { mode: 'copy', property: propertyData },
-      });
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke('mistral-generate', {
+          body: { mode: 'copy', property: propertyData },
+        }),
+        60000,
+        'Tempo limite ao gerar copy do imóvel'
+      );
       if (error) throw error;
       return (data?.text || '').trim();
     } catch (error) {
@@ -496,7 +513,8 @@ export const PropertyScanner = () => {
 
     // Se automação ativa (via UI ou via batch override), validar e registrar pedido
     const isAutoFromBatch = !!overrideDueIso;
-    if (autoEnabled || isAutoFromBatch) {
+    const isAutomationScan = autoEnabled || isAutoFromBatch;
+    if (isAutomationScan) {
       let dueIso = overrideDueIso;
       if (!dueIso) {
         if (!scheduleDate) {
@@ -558,14 +576,14 @@ export const PropertyScanner = () => {
         throw new Error('Todos os proxies (allorigins/jina) falharam ou expiraram (30s cada)');
       }
       
-      const html = await response.text();
+      const html = await withTimeout(response.text(), 30000, 'Tempo limite ao ler o conteúdo da página do imóvel');
 
       // Texto/markdown via Jina pra alimentar a IA com a descrição completa do imóvel
       let pageContext = '';
       try {
         const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
         const jr = await fetchWithTimeout(jinaUrl, 20000);
-        if (jr.ok) pageContext = (await jr.text()).slice(0, 12000);
+        if (jr.ok) pageContext = (await withTimeout(jr.text(), 20000, 'Tempo limite ao ler contexto do imóvel')).slice(0, 12000);
       } catch (e) {
         console.warn('Jina context falhou/timeout:', e);
       }
@@ -588,7 +606,11 @@ export const PropertyScanner = () => {
       const extractedFromText = extractPropertyDataFromText(pageContext || html);
       
       // Extrair imagens
-      const images = extractImages(html, url);
+      const images = extractImages(html, cleanUrl);
+
+      if (isAutomationScan && images.length === 0) {
+        throw new Error('Nenhuma imagem foi encontrada no imóvel; a automação precisa de imagens para gerar o vídeo.');
+      }
 
       // Mesclar com valores padrão
       const finalData: PropertyData = {
@@ -650,7 +672,25 @@ export const PropertyScanner = () => {
 
         // Carregar todas as imagens como HTMLImageElement
         const loadPromises = images.map((imageUrl, index) => {
-          return new Promise<MediaItem>((resolve, reject) => {
+          return new Promise<MediaItem>((resolve) => {
+            let settled = false;
+            const fallback = () => ({
+              id: `img-${Date.now()}-${Math.random()}-${index}`,
+              type: 'image' as const,
+              name: `Imagem ${index + 1}`,
+              data: imageUrl,
+              thumbnail: imageUrl,
+            });
+            const finish = (mediaItem: MediaItem) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              resolve(mediaItem);
+            };
+            const timeoutId = setTimeout(() => {
+              console.warn('Timeout ao carregar imagem, usando URL direta:', imageUrl);
+              finish(fallback());
+            }, isAutomationScan ? 12000 : 25000);
             const img = new Image();
             img.crossOrigin = 'anonymous';
             
@@ -662,20 +702,13 @@ export const PropertyScanner = () => {
                 data: img, // HTMLImageElement carregado!
                 thumbnail: imageUrl,
               };
-              resolve(mediaItem);
+              finish(mediaItem);
             };
             
             img.onerror = () => {
               // Fallback: usar URL diretamente se CORS falhar
               console.warn('Erro ao carregar imagem com CORS, usando URL direta:', imageUrl);
-              const mediaItem: MediaItem = {
-                id: `img-${Date.now()}-${Math.random()}-${index}`,
-                type: 'image',
-                name: `Imagem ${index + 1}`,
-                data: imageUrl,
-                thumbnail: imageUrl,
-              };
-              resolve(mediaItem);
+              finish(fallback());
             };
             
             img.src = imageUrl;
@@ -723,6 +756,10 @@ export const PropertyScanner = () => {
 
           updateTotalDuration();
 
+          if (isAutomationScan && createdMedia.length === 0) {
+            throw new Error('As imagens do imóvel não puderam ser preparadas para a automação.');
+          }
+
           toast({
             title: 'Sucesso!',
             description: `${createdMedia.length} imagens adicionadas à timeline`,
@@ -734,6 +771,7 @@ export const PropertyScanner = () => {
             description: 'Algumas imagens não puderam ser carregadas',
             variant: 'destructive',
           });
+          if (isAutomationScan) throw error;
         }
       }
 
