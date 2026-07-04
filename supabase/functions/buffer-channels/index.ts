@@ -1,7 +1,6 @@
 // Lists Buffer channels for the authenticated Buffer account.
-// Some tokens don't have access to `account.organizations[].channels` (FORBIDDEN),
-// so we fall back to `account.currentOrganization.channels` and then to a
-// per-organization query, skipping orgs the token can't read.
+// The account/organization channel fields are FORBIDDEN for Public API tokens,
+// so we use the top-level `channels(input: { organizationId })` query per org.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -10,40 +9,23 @@ const corsHeaders = {
 
 const BUFFER_API = "https://api.buffer.com";
 
-const QUERY_CURRENT = `
-  query CurrentOrgChannels {
+const QUERY_ORGS = `
+  query Orgs {
     account {
-      currentOrganization {
-        id
-        name
-        channels {
-          id
-          name
-          service
-          avatar
-          timezone
-        }
-      }
-      organizations {
-        id
-        name
-      }
+      id
+      organizations { id name }
     }
   }
 `;
 
-const QUERY_ORG_CHANNELS = `
-  query OrgChannels($id: String!) {
-    organization(id: $id) {
+const QUERY_CHANNELS = `
+  query OrgChannels($id: OrganizationId!) {
+    channels(input: { organizationId: $id }) {
       id
       name
-      channels {
-        id
-        name
-        service
-        avatar
-        timezone
-      }
+      service
+      avatar
+      timezone
     }
   }
 `;
@@ -78,40 +60,25 @@ Deno.serve(async (req) => {
     const channelsMap = new Map<string, any>();
     const errors: unknown[] = [];
 
-    // 1) Try the safer currentOrganization query + list of orgs (no channels field on orgs list)
-    const first = await bufferFetch(apiKey, QUERY_CURRENT);
-    const currentOrg = first.data?.data?.account?.currentOrganization;
-    const orgs: Array<{ id: string; name: string }> = first.data?.data?.account?.organizations ?? [];
-    if (first.data?.errors) errors.push(first.data.errors);
+    const orgsRes = await bufferFetch(apiKey, QUERY_ORGS);
+    if (orgsRes.data?.errors) errors.push(orgsRes.data.errors);
+    const orgs: Array<{ id: string; name: string }> =
+      orgsRes.data?.data?.account?.organizations ?? [];
 
-    if (currentOrg?.channels) {
-      for (const c of currentOrg.channels) {
-        channelsMap.set(c.id, {
-          ...c,
-          organizationId: currentOrg.id,
-          organizationName: currentOrg.name,
-        });
-      }
-    }
-
-    // 2) Try each additional organization individually — skip FORBIDDEN silently
     for (const org of orgs) {
-      if (currentOrg && org.id === currentOrg.id) continue;
-      const res = await bufferFetch(apiKey, QUERY_ORG_CHANNELS, { id: org.id });
-      const orgData = res.data?.data?.organization;
+      const res = await bufferFetch(apiKey, QUERY_CHANNELS, { id: org.id });
       if (res.data?.errors) {
-        // Ignore FORBIDDEN per-org errors, keep others for debugging
         const nonForbidden = res.data.errors.filter(
           (e: any) => e?.extensions?.code !== "FORBIDDEN",
         );
         if (nonForbidden.length) errors.push(nonForbidden);
         continue;
       }
-      for (const c of orgData?.channels ?? []) {
+      for (const c of res.data?.data?.channels ?? []) {
         channelsMap.set(c.id, {
           ...c,
-          organizationId: orgData.id,
-          organizationName: orgData.name,
+          organizationId: org.id,
+          organizationName: org.name,
         });
       }
     }
