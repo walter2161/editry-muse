@@ -168,11 +168,16 @@ Deno.serve(async (req) => {
         channelId,
         // schedulingType=automatic means Buffer auto-publishes (vs notification)
         schedulingType: "automatic",
-        assets: {
-          videos: [
-            { url: videoUrl, ...(body.thumbnailUrl ? { thumbnailUrl: body.thumbnailUrl } : {}) },
-          ],
-        },
+        // AssetInput is a OneOf type: each item must have exactly one key
+        // (video | photo | gif). `assets` is an array of AssetInput.
+        assets: [
+          {
+            video: {
+              url: videoUrl,
+              ...(body.thumbnailUrl ? { thumbnailUrl: body.thumbnailUrl } : {}),
+            },
+          },
+        ],
       };
       if (Object.keys(metadata).length > 0) input.metadata = metadata;
 
