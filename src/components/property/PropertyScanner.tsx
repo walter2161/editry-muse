@@ -84,7 +84,11 @@ const extractPropertyDataFromText = (rawText: string): Partial<PropertyData> => 
   const refMatch = normalized.match(/\bREF\.?:?\s*([A-Z0-9-]+)/i);
   if (refMatch) data.referencia = refMatch[1].trim();
 
-  const typeMatch = normalized.match(/\b(APARTAMENTO|CASA|SOBRADO|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i);
+  // Preferir o tipo dentro do H1 do imóvel (evita "Apartamentos" do menu de navegação)
+  const h1Match = normalized.match(/^#\s+([^\n]+)$/m);
+  const typeScope = h1Match ? h1Match[1] : normalized;
+  const typeMatch = typeScope.match(/\b(APARTAMENTO|CASA|SOBRADO|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i)
+    || normalized.match(/\b(APARTAMENTO|CASA|SOBRADO|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i);
   if (typeMatch) data.tipo = typeMatch[1][0] + typeMatch[1].slice(1).toLowerCase();
 
   if (/\bVENDA\b/i.test(normalized)) data.transacao = 'Venda';
