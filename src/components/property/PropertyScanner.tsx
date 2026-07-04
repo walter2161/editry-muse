@@ -747,13 +747,19 @@ export const PropertyScanner = () => {
         navigate('/editor');
       }, 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao escanear:', error);
+      const msg = error?.message || 'Não foi possível extrair informações da URL';
       toast({
         title: 'Erro ao escanear',
-        description: 'Não foi possível extrair informações da URL',
+        description: msg,
         variant: 'destructive',
       });
+      // Propagar erro para o overlay de automação (se estiver ativo) para destravar a UI
+      const auto = useAutomationStore.getState();
+      if (auto.enabled && (auto.step === 'waiting-scan' || auto.step === 'idle')) {
+        auto.setStep('error', msg);
+      }
     } finally {
       setIsScanning(false);
     }
