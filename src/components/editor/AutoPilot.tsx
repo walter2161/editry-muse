@@ -374,11 +374,19 @@ async function scheduleAllChannels(blob: Blob, filename: string, dueAtIso: strin
         okCount++;
         toast.success(`✓ ${svc.toUpperCase()} agendado`);
       } else {
-        const msg = r?.result?.message ?? 'erro';
-        failures.push(`${svc}: ${msg}`);
-        toast.error(`✗ ${svc.toUpperCase()}: ${msg}`);
+        // Extrair mensagem real do Buffer/GraphQL (pode estar em result.message ou result.errors)
+        const raw = r?.result;
+        const gqlMsg = raw?.message
+          || raw?.errors?.[0]?.message
+          || raw?.errors?.[0]?.extensions?.code
+          || JSON.stringify(raw)?.slice(0, 400)
+          || 'erro';
+        console.error(`Buffer schedule failed [${svc}]`, { channelId: ch.id, response: raw });
+        failures.push(`${svc}: ${gqlMsg}`);
+        toast.error(`✗ ${svc.toUpperCase()}: ${gqlMsg}`);
       }
     } catch (err: any) {
+      console.error(`Buffer invoke threw [${svc}]`, err);
       failures.push(`${svc}: ${err?.message ?? 'erro'}`);
       toast.error(`✗ ${svc.toUpperCase()}: ${err?.message ?? 'erro'}`);
     }
