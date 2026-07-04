@@ -288,9 +288,9 @@ export const ExportVideoDialog = () => {
       if (typeof item.data === 'string') {
         const src = item.data as string;
 
-        const loadWith = (url: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+        const loadWith = (url: string, useCors = true) => new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image();
-          img.crossOrigin = 'anonymous';
+          if (useCors) img.crossOrigin = 'anonymous';
           img.onload = () => resolve(img);
           img.onerror = () => reject(new Error('Falha ao carregar imagem para exportação'));
           img.src = url;
@@ -305,26 +305,36 @@ export const ExportVideoDialog = () => {
           }
         };
 
+        // weserv PRIMEIRO: garante CORS mesmo para hosts sem Access-Control-Allow-Origin
+        // (ex.: vendebens.com.br/api/public/img). Depois tenta direto e outros proxies.
         const proxyCandidates = [
-          src,
           buildWeserv(src),
+          src,
           `https://cors.isomorphic-git.org/${src}`,
         ].filter(Boolean) as string[];
 
         for (const candidate of proxyCandidates) {
           try {
-            const loaded = await loadWith(candidate);
+            const loaded = await loadWith(candidate, true);
             drawableCache.set(mediaId, loaded);
             return loaded;
           } catch {
             // tenta próximo candidato
           }
         }
-        // Se todas as tentativas falharem, retorna null para evitar "taint" no canvas
-        return null;
+        // Último recurso: carregar sem CORS (canvas ficará "tainted" — export via
+        // MediaRecorder ainda funciona pois não faz readback de pixel).
+        try {
+          const loaded = await loadWith(src, false);
+          drawableCache.set(mediaId, loaded);
+          return loaded;
+        } catch {
+          return null;
+        }
       }
       return null;
     }
+
 
     if (item.type === 'video') {
       if (item.data instanceof HTMLVideoElement) {
