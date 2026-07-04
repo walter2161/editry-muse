@@ -827,8 +827,13 @@ export const ExportVideoDialog = () => {
             unsub();
             if (state.filename.toLowerCase().endsWith('.mp4') && state.blob.type.includes('mp4')) {
               resolve({ blob: state.blob, filename: state.filename });
+            } else if (state.blob && state.filename) {
+              // Fallback: aceita webm para o AutoPilot poder tentar o agendamento
+              // e receber a mensagem exata de erro do Buffer/edge function.
+              console.warn('AutoPilot recebendo vídeo não-MP4', { filename: state.filename, type: state.blob.type });
+              resolve({ blob: state.blob, filename: state.filename });
             } else {
-              reject(new Error('Renderização não gerou MP4 compatível para Buffer'));
+              reject(new Error('Renderização não gerou arquivo válido'));
             }
           }
         });
