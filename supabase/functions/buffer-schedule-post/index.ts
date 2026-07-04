@@ -51,6 +51,24 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
+function isProbablyMp4(bytes: Uint8Array): boolean {
+  // ISO BMFF/MP4 files expose the `ftyp` box near the beginning.
+  // Rejecting WebM/other containers here prevents Buffer from accepting a
+  // mislabeled file that later only appears on one social network.
+  const limit = Math.min(bytes.length - 3, 64);
+  for (let i = 0; i < limit; i++) {
+    if (bytes[i] === 0x66 && bytes[i + 1] === 0x74 && bytes[i + 2] === 0x79 && bytes[i + 3] === 0x70) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function postTitleFromText(text: string): string {
+  const firstLine = text.split("\n").map((line) => line.trim()).find(Boolean) ?? "Vídeo Vendebens";
+  return firstLine.slice(0, 100);
+}
+
 const MUTATION = `
   mutation CreatePost($input: CreatePostInput!) {
     createPost(input: $input) {
@@ -110,6 +128,15 @@ Deno.serve(async (req) => {
       const safeName = body.filename.replace(/[^a-z0-9.\-_]/gi, "_").replace(/\.[^.]+$/, "");
       const path = `${crypto.randomUUID()}-${safeName}.mp4`;
       const bytes = base64ToBytes(body.videoBase64);
+      if (!isProbablyMp4(bytes)) {
+        return new Response(
+          JSON.stringify({
+            error: "INVALID_VIDEO_CONTAINER",
+            details: "O arquivo renderizado não é um MP4 real. Renderize novamente para gerar H.264/AAC antes de agendar.",
+          }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
         .upload(path, bytes, {
@@ -174,6 +201,10 @@ Deno.serve(async (req) => {
           {
             video: {
               url: videoUrl,
+              metadata: {
+                thumbnailOffset: 0,
+                title: postTitleFromText(body.text),
+              },
               ...(body.thumbnailUrl ? { thumbnailUrl: body.thumbnailUrl } : {}),
             },
           },
