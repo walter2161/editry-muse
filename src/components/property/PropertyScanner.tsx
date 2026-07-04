@@ -535,15 +535,27 @@ export const PropertyScanner = () => {
         `https://r.jina.ai/https://${cleanUrl.replace(/^https?:\/\//, '')}`,
       ];
 
+      const fetchWithTimeout = async (endpoint: string, ms: number) => {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), ms);
+        try {
+          return await fetch(endpoint, { signal: ctl.signal });
+        } finally {
+          clearTimeout(t);
+        }
+      };
+
       let response: Response | null = null;
       for (const endpoint of candidates) {
         try {
-          const r = await fetch(endpoint);
+          const r = await fetchWithTimeout(endpoint, 30000);
           if (r.ok) { response = r; break; }
-        } catch {}
+        } catch (e) {
+          console.warn('Proxy falhou/timeout:', endpoint, e);
+        }
       }
       if (!response) {
-        throw new Error('Erro ao buscar página');
+        throw new Error('Todos os proxies (allorigins/jina) falharam ou expiraram (30s cada)');
       }
       
       const html = await response.text();
@@ -552,9 +564,11 @@ export const PropertyScanner = () => {
       let pageContext = '';
       try {
         const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
-        const jr = await fetch(jinaUrl);
+        const jr = await fetchWithTimeout(jinaUrl, 20000);
         if (jr.ok) pageContext = (await jr.text()).slice(0, 12000);
-      } catch {}
+      } catch (e) {
+        console.warn('Jina context falhou/timeout:', e);
+      }
       if (!pageContext) {
         try {
           const tmp = new DOMParser().parseFromString(html, 'text/html');
@@ -733,13 +747,19 @@ export const PropertyScanner = () => {
         navigate('/editor');
       }, 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao escanear:', error);
+      const msg = error?.message || 'Não foi possível extrair informações da URL';
       toast({
         title: 'Erro ao escanear',
-        description: 'Não foi possível extrair informações da URL',
+        description: msg,
         variant: 'destructive',
       });
+      // Propagar erro para o overlay de automação (se estiver ativo) para destravar a UI
+      const auto = useAutomationStore.getState();
+      if (auto.enabled && (auto.step === 'waiting-scan' || auto.step === 'idle')) {
+        auto.setStep('error', msg);
+      }
     } finally {
       setIsScanning(false);
     }
