@@ -687,29 +687,36 @@ export const PropertyScanner = () => {
               console.warn('Timeout ao carregar imagem, usando URL direta:', imageUrl);
               finish(fallback());
             }, isAutomationScan ? 12000 : 25000);
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            
-            img.onload = () => {
-              const mediaItem: MediaItem = {
-                id: `img-${Date.now()}-${Math.random()}-${index}`,
-                type: 'image',
-                name: `Imagem ${index + 1}`,
-                data: img, // HTMLImageElement carregado!
-                thumbnail: imageUrl,
-              };
-              finish(mediaItem);
-            };
-            
-            img.onerror = () => {
-              // Fallback: usar URL diretamente se CORS falhar
-              console.warn('Erro ao carregar imagem com CORS, usando URL direta:', imageUrl);
-              finish(fallback());
-            };
-            
-            img.src = imageUrl;
+            // weserv-first: garante CORS mesmo em hosts sem Access-Control-Allow-Origin.
+            const weserv = `https://images.weserv.nl/?url=${encodeURIComponent(imageUrl.replace(/^https?:\/\//, ''))}`;
+
+            const tryLoad = (url: string) =>
+              new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('load failed'));
+                img.src = url;
+              });
+
+            tryLoad(weserv)
+              .catch(() => tryLoad(imageUrl))
+              .then((img) => {
+                finish({
+                  id: `img-${Date.now()}-${Math.random()}-${index}`,
+                  type: 'image',
+                  name: `Imagem ${index + 1}`,
+                  data: img,
+                  thumbnail: imageUrl,
+                });
+              })
+              .catch(() => {
+                console.warn('Imagem sem CORS — usando URL direta (canvas tainted):', imageUrl);
+                finish(fallback());
+              });
           });
         });
+
 
         try {
           const loadedMedia = await Promise.all(loadPromises);
