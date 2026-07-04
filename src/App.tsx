@@ -8,6 +8,10 @@ import VideoEditor from "./pages/VideoEditor";
 import BufferSettings from "./pages/BufferSettings";
 import NotFound from "./pages/NotFound";
 import { AutomationOverlay } from "./components/editor/AutomationOverlay";
+import { DebugConsole } from "./components/DebugConsole";
+import { installGlobalErrorCapture } from "./store/errorLogStore";
+
+installGlobalErrorCapture();
 
 const queryClient = new QueryClient();
 
@@ -25,6 +29,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AutomationOverlay />
+        <DebugConsole />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
