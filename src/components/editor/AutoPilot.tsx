@@ -66,6 +66,31 @@ export const AutoPilot = () => {
   const { enabled, dueAtIso, triggered, consume, setStep, reset } = useAutomationStore();
   const { propertyData } = usePropertyStore();
   const ranRef = useRef(false);
+  const waitingImagesSinceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled || triggered || !propertyData?.url || ranRef.current) {
+      waitingImagesSinceRef.current = null;
+      return;
+    }
+
+    const hasImages = useEditorStore.getState().clips.some((c) => c.type === 'image');
+    if (hasImages) {
+      waitingImagesSinceRef.current = null;
+      return;
+    }
+
+    waitingImagesSinceRef.current = waitingImagesSinceRef.current ?? Date.now();
+    const timer = window.setTimeout(() => {
+      const state = useAutomationStore.getState();
+      const stillMissingImages = !useEditorStore.getState().clips.some((c) => c.type === 'image');
+      if (state.enabled && !state.triggered && stillMissingImages) {
+        setStep('error', 'Escaneamento concluído, mas nenhuma imagem entrou na timeline. A automação foi interrompida para não ficar travada.');
+      }
+    }, 15000);
+
+    return () => window.clearTimeout(timer);
+  }, [enabled, triggered, propertyData?.url, setStep]);
 
   useEffect(() => {
     if (!enabled || triggered || ranRef.current) return;
