@@ -535,15 +535,27 @@ export const PropertyScanner = () => {
         `https://r.jina.ai/https://${cleanUrl.replace(/^https?:\/\//, '')}`,
       ];
 
+      const fetchWithTimeout = async (endpoint: string, ms: number) => {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), ms);
+        try {
+          return await fetch(endpoint, { signal: ctl.signal });
+        } finally {
+          clearTimeout(t);
+        }
+      };
+
       let response: Response | null = null;
       for (const endpoint of candidates) {
         try {
-          const r = await fetch(endpoint);
+          const r = await fetchWithTimeout(endpoint, 30000);
           if (r.ok) { response = r; break; }
-        } catch {}
+        } catch (e) {
+          console.warn('Proxy falhou/timeout:', endpoint, e);
+        }
       }
       if (!response) {
-        throw new Error('Erro ao buscar página');
+        throw new Error('Todos os proxies (allorigins/jina) falharam ou expiraram (30s cada)');
       }
       
       const html = await response.text();
