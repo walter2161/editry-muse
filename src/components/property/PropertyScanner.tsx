@@ -401,86 +401,82 @@ export const PropertyScanner = () => {
     return data;
   };
 
+  const isPropertyImage = (url: string): boolean => {
+    const u = url.toLowerCase();
+    // Excluir logos, ícones, mapas (Google Maps, OpenStreetMap e afins) e sprites
+    const blocked = [
+      'logo', 'icon', 'favicon', 'sprite',
+      'maps', 'openstreetmap', 'tile.openstreetmap', '/tile/', '.tile.',
+      'mapbox', 'staticmap', 'googleusercontent.com/maps',
+      'placeholder', 'no-image', 'no_image', 'sem-imagem',
+    ];
+    if (blocked.some((k) => u.includes(k))) return false;
+    // Excluir tiles genéricos /z/x/y.png típicos de OSM
+    if (/\/\d{1,2}\/\d+\/\d+\.(png|jpg|jpeg|webp)(\?|$)/.test(u)) return false;
+    return true;
+  };
+
   const extractImages = (html: string, baseUrl: string): string[] => {
     const images: string[] = [];
-    
+
     // Detectar se é Markdown (r.jina.ai retorna Markdown ao invés de HTML)
     const isMarkdown = html.includes('![Image') || html.match(/!\[.*?\]\(http/);
-    
+
     if (isMarkdown) {
       // Extrair URLs de imagens do formato Markdown: ![alt](url)
       const markdownImageRegex = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/g;
       let match;
       while ((match = markdownImageRegex.exec(html)) !== null) {
         const imgUrl = match[1];
-        // Filtrar logos e ícones
-        if (!imgUrl.toLowerCase().includes('logo') && !imgUrl.toLowerCase().includes('icon') && !imgUrl.toLowerCase().includes('maps')) {
-          images.push(imgUrl);
-        }
+        if (isPropertyImage(imgUrl)) images.push(imgUrl);
       }
     } else {
       // Parse como HTML (allorigins retorna HTML)
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      
+
       // Procurar imagens na classe específica property-view--slides-inner
       const slidesContainer = doc.querySelector('.property-view--slides-inner');
       if (slidesContainer) {
         const imgElements = slidesContainer.querySelectorAll('img');
-        imgElements.forEach(img => {
+        imgElements.forEach((img) => {
           const imgEl = img as HTMLImageElement;
           let src = imgEl.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
           if (src) {
-            // Converter URLs relativas para absolutas
-            if (src.startsWith('//')) {
-              src = 'https:' + src;
-            } else if (src.startsWith('/')) {
-              const urlObj = new URL(baseUrl);
-              src = urlObj.origin + src;
-            }
-            if (src.startsWith('http')) {
-              images.push(src);
-            }
+            if (src.startsWith('//')) src = 'https:' + src;
+            else if (src.startsWith('/')) src = new URL(baseUrl).origin + src;
+            if (src.startsWith('http') && isPropertyImage(src)) images.push(src);
           }
         });
       }
-      
-      // Fallback: procurar em outras classes comuns de galeria se não encontrou nada
+
+      // Fallback: seletores genéricos de galeria
       if (images.length === 0) {
         const gallerySelectors = [
-          '.gallery img',
-          '.carousel img',
-          '.slides img',
-          '.photos img',
-          '.images img',
-          '[class*="slide"] img',
-          '[class*="gallery"] img'
+          '.gallery img', '.carousel img', '.slides img', '.photos img', '.images img',
+          '[class*="slide"] img', '[class*="gallery"] img', 'img',
         ];
-        
         for (const selector of gallerySelectors) {
           const imgElements = doc.querySelectorAll(selector);
-          imgElements.forEach(img => {
+          imgElements.forEach((img) => {
             const imgEl = img as HTMLImageElement;
             let src = imgEl.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-            if (src && !src.includes('logo') && !src.includes('icon')) {
-              if (src.startsWith('//')) {
-                src = 'https:' + src;
-              } else if (src.startsWith('/')) {
-                const urlObj = new URL(baseUrl);
-                src = urlObj.origin + src;
-              }
-              if (src.startsWith('http')) {
-                images.push(src);
-              }
+            if (src) {
+              if (src.startsWith('//')) src = 'https:' + src;
+              else if (src.startsWith('/')) src = new URL(baseUrl).origin + src;
+              if (src.startsWith('http') && isPropertyImage(src)) images.push(src);
             }
           });
-          
           if (images.length > 0) break;
         }
       }
     }
-    
-    return images.slice(0, 20); // Limitar a 20 imagens
+
+
+    // Dedup preservando ordem
+    const seen = new Set<string>();
+    const unique = images.filter((u) => (seen.has(u) ? false : (seen.add(u), true)));
+    return unique.filter(isPropertyImage).slice(0, 20);
   };
 
   const generateCopyWithAI = async (propertyData: Partial<PropertyData>) => {
@@ -691,29 +687,36 @@ export const PropertyScanner = () => {
               console.warn('Timeout ao carregar imagem, usando URL direta:', imageUrl);
               finish(fallback());
             }, isAutomationScan ? 12000 : 25000);
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            
-            img.onload = () => {
-              const mediaItem: MediaItem = {
-                id: `img-${Date.now()}-${Math.random()}-${index}`,
-                type: 'image',
-                name: `Imagem ${index + 1}`,
-                data: img, // HTMLImageElement carregado!
-                thumbnail: imageUrl,
-              };
-              finish(mediaItem);
-            };
-            
-            img.onerror = () => {
-              // Fallback: usar URL diretamente se CORS falhar
-              console.warn('Erro ao carregar imagem com CORS, usando URL direta:', imageUrl);
-              finish(fallback());
-            };
-            
-            img.src = imageUrl;
+            // weserv-first: garante CORS mesmo em hosts sem Access-Control-Allow-Origin.
+            const weserv = `https://images.weserv.nl/?url=${encodeURIComponent(imageUrl.replace(/^https?:\/\//, ''))}`;
+
+            const tryLoad = (url: string) =>
+              new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('load failed'));
+                img.src = url;
+              });
+
+            tryLoad(weserv)
+              .catch(() => tryLoad(imageUrl))
+              .then((img) => {
+                finish({
+                  id: `img-${Date.now()}-${Math.random()}-${index}`,
+                  type: 'image',
+                  name: `Imagem ${index + 1}`,
+                  data: img,
+                  thumbnail: imageUrl,
+                });
+              })
+              .catch(() => {
+                console.warn('Imagem sem CORS — usando URL direta (canvas tainted):', imageUrl);
+                finish(fallback());
+              });
           });
         });
+
 
         try {
           const loadedMedia = await Promise.all(loadPromises);
