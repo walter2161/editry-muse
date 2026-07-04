@@ -564,9 +564,11 @@ export const PropertyScanner = () => {
       let pageContext = '';
       try {
         const jinaUrl = `https://r.jina.ai/${cleanUrl}`;
-        const jr = await fetch(jinaUrl);
+        const jr = await fetchWithTimeout(jinaUrl, 20000);
         if (jr.ok) pageContext = (await jr.text()).slice(0, 12000);
-      } catch {}
+      } catch (e) {
+        console.warn('Jina context falhou/timeout:', e);
+      }
       if (!pageContext) {
         try {
           const tmp = new DOMParser().parseFromString(html, 'text/html');
