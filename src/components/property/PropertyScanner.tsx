@@ -431,9 +431,47 @@ export const PropertyScanner = () => {
         if (isPropertyImage(imgUrl)) images.push(imgUrl);
       }
     } else {
-...
+      // Parse como HTML (allorigins retorna HTML)
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // Procurar imagens na classe específica property-view--slides-inner
+      const slidesContainer = doc.querySelector('.property-view--slides-inner');
+      if (slidesContainer) {
+        const imgElements = slidesContainer.querySelectorAll('img');
+        imgElements.forEach((img) => {
+          const imgEl = img as HTMLImageElement;
+          let src = imgEl.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+          if (src) {
+            if (src.startsWith('//')) src = 'https:' + src;
+            else if (src.startsWith('/')) src = new URL(baseUrl).origin + src;
+            if (src.startsWith('http') && isPropertyImage(src)) images.push(src);
+          }
+        });
+      }
+
+      // Fallback: seletores genéricos de galeria
+      if (images.length === 0) {
+        const gallerySelectors = [
+          '.gallery img', '.carousel img', '.slides img', '.photos img', '.images img',
+          '[class*="slide"] img', '[class*="gallery"] img', 'img',
+        ];
+        for (const selector of gallerySelectors) {
+          const imgElements = doc.querySelectorAll(selector);
+          imgElements.forEach((img) => {
+            const imgEl = img as HTMLImageElement;
+            let src = imgEl.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+            if (src) {
+              if (src.startsWith('//')) src = 'https:' + src;
+              else if (src.startsWith('/')) src = new URL(baseUrl).origin + src;
+              if (src.startsWith('http') && isPropertyImage(src)) images.push(src);
+            }
+          });
+          if (images.length > 0) break;
+        }
       }
     }
+
 
     // Dedup preservando ordem
     const seen = new Set<string>();
