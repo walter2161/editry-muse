@@ -30,6 +30,60 @@ export const ExportVideoDialog = () => {
 
   const hasClips = clips.length > 0;
 
+  const buildExportFilename = (extension: "mp4" | "webm", dimensions: { width: number; height: number }) =>
+    `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.${extension}`;
+
+  const loadFfmpeg = async () => {
+    const ffmpeg = new FFmpeg();
+    const bases = [
+      'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.2/dist/ffmpeg-core',
+      'https://unpkg.com/@ffmpeg/core@0.12.2/dist/ffmpeg-core'
+    ];
+
+    for (const base of bases) {
+      try {
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${base}.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${base}.wasm`, 'application/wasm'),
+          workerURL: await toBlobURL(`${base}.worker.js`, 'text/javascript'),
+        });
+        return ffmpeg;
+      } catch (e) {
+        console.warn('Falha ao carregar FFmpeg de', base, e);
+      }
+    }
+
+    throw new Error('Não foi possível carregar o FFmpeg');
+  };
+
+  const ensureMp4ForBuffer = async (
+    blob: Blob,
+    sourceName: string,
+    dimensions: { width: number; height: number },
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const filename = buildExportFilename('mp4', dimensions);
+    toast.message('Convertendo para MP4 compatível com Instagram/Facebook...');
+    const ffmpeg = await loadFfmpeg();
+    const inputName = sourceName.toLowerCase().endsWith('.webm') ? 'input.webm' : 'input.video';
+    const outputName = 'output.mp4';
+    await ffmpeg.writeFile(inputName, await fetchFile(blob));
+    await ffmpeg.exec([
+      '-i', inputName,
+      '-c:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-profile:v', 'main',
+      '-preset', 'veryfast',
+      '-crf', '23',
+      '-c:a', 'aac',
+      '-b:a', '192k',
+      '-ar', '48000',
+      '-movflags', '+faststart',
+      outputName,
+    ]);
+    const data = await ffmpeg.readFile(outputName);
+    return { blob: new Blob([new Uint8Array(data as any)], { type: 'video/mp4' }), filename };
+  };
+
   const getVideoDimensions = () => {
     switch (globalSettings.videoFormat) {
       case '9:16':
@@ -619,76 +673,24 @@ export const ExportVideoDialog = () => {
               return;
             }
 
-            // Se o navegador suportar MP4 nativamente, manter o blob (sem download automático)
-            if (mimeType.includes('mp4')) {
-              const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
-              setRendered(blob, filename);
+            try {
+              const { blob: mp4Blob, filename } = await ensureMp4ForBuffer(blob, buildExportFilename(mimeType.includes('mp4') ? 'mp4' : 'webm', dimensions), dimensions);
+              setRendered(mp4Blob, filename);
               toast.success("Vídeo renderizado! Use os botões para baixar ou agendar.");
               setIsExporting(false);
               setExportProgress(100);
               resolve();
               return;
+            } catch (err) {
+              console.error('Falha na conversão para MP4', err);
+              toast.error("Não foi possível gerar MP4 compatível para agendamento");
+              setIsExporting(false);
+              resolve();
             }
-
-            // Transcodificar para MP4 (H.264 + AAC)
-            setExportProgress((p) => Math.min(95, p));
-            toast.message("Convertendo para MP4... isso pode levar alguns minutos");
-
-            const ffmpeg = new FFmpeg();
-
-            // Tentar múltiplos CDNs para carregar o core do FFmpeg
-            const bases = [
-              'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.2/dist/ffmpeg-core',
-              'https://unpkg.com/@ffmpeg/core@0.12.2/dist/ffmpeg-core'
-            ];
-            let loaded = false;
-            for (const base of bases) {
-              try {
-                await ffmpeg.load({
-                  coreURL: await toBlobURL(`${base}.js`, 'text/javascript'),
-                  wasmURL: await toBlobURL(`${base}.wasm`, 'application/wasm'),
-                  workerURL: await toBlobURL(`${base}.worker.js`, 'text/javascript'),
-                });
-                loaded = true;
-                break;
-              } catch (e) {
-                console.warn('Falha ao carregar FFmpeg de', base, e);
-              }
-            }
-            if (!loaded) throw new Error('Não foi possível carregar o FFmpeg');
-
-            const inputName = 'input.webm';
-            const outputName = 'output.mp4';
-            await ffmpeg.writeFile(inputName, await fetchFile(blob));
-
-            await ffmpeg.exec([
-              '-i', inputName,
-              '-c:v', 'libx264',
-              '-preset', 'veryfast',
-              '-crf', '23',
-              '-c:a', 'aac',
-              '-b:a', '320k', // Alta qualidade de áudio
-              '-ar', '48000', // Sample rate de 48kHz
-              outputName
-            ]);
-
-            const data = await ffmpeg.readFile(outputName);
-            const mp4Blob = new Blob([new Uint8Array(data as any)], { type: 'video/mp4' });
-            const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.mp4`;
-            setRendered(mp4Blob, filename);
-
-            toast.success("Vídeo renderizado em MP4! Use os botões para baixar ou agendar.");
-            setIsExporting(false);
-            setExportProgress(100);
-            resolve();
           } catch (err) {
-            console.error('Falha na conversão para MP4, mantendo WEBM como fallback', err);
-            const blob = new Blob(chunks, { type: mimeType });
-            const filename = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${globalSettings.videoFormat}_${dimensions.width}x${dimensions.height}.webm`;
-            setRendered(blob, filename);
-            toast.warning("MP4 indisponível, WEBM disponível para download/agendamento");
+            console.error('Falha ao finalizar vídeo', err);
+            toast.error("Falha ao finalizar vídeo");
             setIsExporting(false);
-            setExportProgress(100);
             resolve();
           }
         };
@@ -807,7 +809,11 @@ export const ExportVideoDialog = () => {
           if (state.blob && state.filename && state.createdAt && state.createdAt !== before) {
             clearTimeout(timeout);
             unsub();
-            resolve({ blob: state.blob, filename: state.filename });
+            if (state.filename.toLowerCase().endsWith('.mp4') && state.blob.type.includes('mp4')) {
+              resolve({ blob: state.blob, filename: state.filename });
+            } else {
+              reject(new Error('Renderização não gerou MP4 compatível para Buffer'));
+            }
           }
         });
       });
