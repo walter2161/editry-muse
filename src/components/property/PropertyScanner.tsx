@@ -64,49 +64,94 @@ const isSaleContext = (label: string) => {
   return /\bvenda\b|\bvalor\b|valor total|valor do im[oó]vel|\bpre[cç]o\b/.test(label);
 };
 
-const extractPropertyDataFromText = (text: string): Partial<PropertyData> => {
+const extractPropertyDataFromText = (rawText: string): Partial<PropertyData> => {
+  // Corta similares/rodapé para não pegar preços/dados de outros imóveis
+  const cutMarkers = [
+    /##\s*Im[óo]veis semelhantes/i,
+    /\bIm[óo]veis semelhantes\b/i,
+    /##\s*Outros im[óo]veis/i,
+    /Outras op[cç][õo]es com caracter/i,
+  ];
+  let text = rawText;
+  for (const rx of cutMarkers) {
+    const m = text.match(rx);
+    if (m && m.index !== undefined) { text = text.slice(0, m.index); break; }
+  }
   const normalized = text.replace(/\r/g, '').replace(/\u00a0/g, ' ');
   const data: Partial<PropertyData> = { diferenciais: [] };
 
-  const refMatch = normalized.match(/REF\.:?\s*([A-Z0-9-]+)/i);
+  // REF: aceita "REF.:", "REF 28684", "REF: 28684"
+  const refMatch = normalized.match(/\bREF\.?:?\s*([A-Z0-9-]+)/i);
   if (refMatch) data.referencia = refMatch[1].trim();
 
-  const typeMatch = normalized.match(/\b(APARTAMENTO|CASA|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i);
+  // Preferir o tipo dentro do H1 do imóvel (evita "Apartamentos" do menu de navegação)
+  const h1Match = normalized.match(/^#\s+([^\n]+)$/m);
+  const typeScope = h1Match ? h1Match[1] : normalized;
+  const typeMatch = typeScope.match(/\b(APARTAMENTO|CASA|SOBRADO|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i)
+    || normalized.match(/\b(APARTAMENTO|CASA|SOBRADO|COBERTURA|TERRENO|COMERCIAL|CH[ÁA]CARA)\b/i);
   if (typeMatch) data.tipo = typeMatch[1][0] + typeMatch[1].slice(1).toLowerCase();
 
   if (/\bVENDA\b/i.test(normalized)) data.transacao = 'Venda';
-  else if (/\bALUGUEL\b|\bLOCAÇÃO\b/i.test(normalized)) data.transacao = 'Aluguel';
+  else if (/\bALUGUEL\b|\bLOCA[ÇC][ÃA]O\b|\/m[êe]s/i.test(normalized)) data.transacao = 'Aluguel';
 
-  const locationMatch = normalized.match(/\n\s*([A-ZÀ-Ú0-9'´\- ]+)\s*-\s*([A-ZÀ-Ú'´\- ]+),\s*([A-Z]{2})\s*\n/i);
-  if (locationMatch) {
-    data.bairro = locationMatch[1].trim();
-    data.cidade = locationMatch[2].trim();
-    data.estado = locationMatch[3].trim();
+  // Localização: formato antigo "BAIRRO - CIDADE, UF"
+  const locOld = normalized.match(/\n\s*([A-ZÀ-Ú0-9'´\- ]+)\s*-\s*([A-ZÀ-Ú'´\- ]+),\s*([A-Z]{2})\s*\n/i);
+  if (locOld) {
+    data.bairro = locOld[1].trim();
+    data.cidade = locOld[2].trim();
+    data.estado = locOld[3].trim();
+  } else {
+    // Novo vendebens: "Boqueirão, Praia Grande" logo abaixo do título
+    const locNew = normalized.match(/\n\s*([A-Za-zÀ-ú'´\- ]{2,40}),\s*([A-Za-zÀ-ú'´\- ]{2,40})\s*\n/);
+    if (locNew) {
+      data.bairro = locNew[1].trim();
+      data.cidade = locNew[2].trim();
+      if (/Praia Grande|Santos|S[ãa]o Vicente|Guaruj[áa]|Mongagu[áa]|Itanha[ée]m|Peru[íi]be|Bertioga|Cubat[ãa]o/i.test(data.cidade || '')) {
+        data.estado = 'SP';
+      }
+    }
   }
 
-  const totalMatch = normalized.match(/(?:\bTotal\b|\bValor\b|\bPre[cç]o\b)[^\n]*R\$\s*([\d.]+(?:,\d{2})?)/i)
-    || normalized.match(/POR\s+R\$\s*([\d.]+(?:,\d{2})?)/i);
-  if (totalMatch) data.valor = parseCurrencyValue(`R$ ${totalMatch[1]}`) ?? 0;
+  // Preço: preferir "Valor de venda"/"Valor de locação" antes de fallback
+  const labeledPrice = normalized.match(/Valor\s+de\s+(?:venda|loca[cç][ãa]o)\s*[:\n]+\s*R\$\s*([\d.]+(?:,\d{2})?)/i)
+    || normalized.match(/(?:\bTotal\b|\bValor\b|\bPre[cç]o\b)[^\n]{0,20}R\$\s*([\d.]+(?:,\d{2})?)/i)
+    || normalized.match(/POR\s+R\$\s*([\d.]+(?:,\d{2})?)/i)
+    || normalized.match(/R\$\s*([\d.]+(?:,\d{2})?)/i);
+  if (labeledPrice) data.valor = parseCurrencyValue(`R$ ${labeledPrice[1]}`) ?? 0;
 
-  const quartosMatch = normalized.match(/Quartos\s*\n\s*(\d+)/i);
+  // Quartos/Dormitórios — aceita quebras simples/duplas e forma inline "3 dorms."
+  const quartosMatch = normalized.match(/(?:Quartos|Dormit[óo]rios)\s*\n+\s*(\d+)/i)
+    || normalized.match(/(\d+)\s*dorm(?:s|it[óo]rios?)?\b/i);
   if (quartosMatch) data.quartos = Number(quartosMatch[1]);
-  const vagasMatch = normalized.match(/Vagas\s*\n\s*(\d+)/i);
+
+  const vagasMatch = normalized.match(/Vagas?\s*\n+\s*(\d+)/i)
+    || normalized.match(/(\d+)\s*vagas?\b/i);
   if (vagasMatch) data.vagas = Number(vagasMatch[1]);
-  const banheirosMatch = normalized.match(/Banheiro(?:s)?\s*\n\s*(\d+)/i);
+
+  const banheirosMatch = normalized.match(/Banheiros?\s*\n+\s*(\d+)/i)
+    || normalized.match(/(\d+)\s*banheiros?\b/i);
   if (banheirosMatch) data.banheiros = Number(banheirosMatch[1]);
 
-  const areaMatch = normalized.match(/Área Útil\s*\n\s*([\d.,]+)/i);
-  if (areaMatch) data.area = Number(areaMatch[1].replace(/\./g, '').replace(',', '.'));
+  const areaMatch = normalized.match(/[ÁA]rea\s+[úu]til\s*\n+\s*([\d.,]+)\s*m/i)
+    || normalized.match(/([\d.,]+)\s*m²/i);
+  if (areaMatch) {
+    const v = Number(areaMatch[1].replace(/\./g, '').replace(',', '.'));
+    if (v > 0) data.area = v;
+  }
 
   const distMatch = normalized.match(/Dist[âa]ncia praia\s*\n\s*([^\n]+)/i);
   const diferenciaisSection = normalized.match(/DIFERENCIAIS:\s*([\s\S]*?)\n\s*CARACTER[ÍI]STICAS/i)?.[1] || '';
   const caracteristicasSection = normalized.match(/CARACTER[ÍI]STICAS\s*([\s\S]*?)\n\s*INFORMAÇÕES DE LOCALIZAÇÃO/i)?.[1] || '';
+  const sobreSection = normalized.match(/##\s*Sobre o im[óo]vel\s*([\s\S]*?)(?:\n##|Valor de|$)/i)?.[1] || '';
   const extras = [
     ...diferenciaisSection.split(/\n+/).map((item) => item.trim()),
     ...caracteristicasSection.split(/\n+/).map((item) => item.trim()),
     distMatch ? `Distância da praia: ${distMatch[1].trim()}` : '',
   ].filter((item) => item && item.length > 2);
   data.diferenciais = Array.from(new Set(extras)).slice(0, 20);
+  if (sobreSection.trim()) {
+    data.descricaoAdicional = sobreSection.trim().slice(0, 500);
+  }
 
   return data;
 };
