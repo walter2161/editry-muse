@@ -151,9 +151,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
-    if (!MISTRAL_API_KEY) {
-      return new Response(JSON.stringify({ error: 'MISTRAL_API_KEY não configurada' }), {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY não configurada' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -165,24 +165,28 @@ Deno.serve(async (req) => {
 
     const prompt = mode === 'copy' ? buildCopyPrompt(property) : buildScriptPrompt(property);
 
-    const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`,
+        'Lovable-API-Key': LOVABLE_API_KEY,
       },
       body: JSON.stringify({
-        model: 'mistral-large-latest',
+        model: 'google/gemini-3.6-flash',
         messages: [{ role: 'user', content: prompt }],
         temperature: mode === 'copy' ? 0.75 : 0.85,
-        max_tokens: 2200,
       }),
     });
 
     if (!resp.ok) {
       const errText = await resp.text();
-      console.error('Mistral error', resp.status, errText);
-      return new Response(JSON.stringify({ error: `Mistral API ${resp.status}: ${errText}` }), {
+      console.error('AI gateway error', resp.status, errText);
+      const msg = resp.status === 429
+        ? 'Limite de requisições atingido. Tente novamente em instantes.'
+        : (resp.status === 402 || resp.status === 403)
+          ? 'Créditos de IA esgotados/limite do workspace atingido. Ajuste o limite ou adicione créditos.'
+          : `IA ${resp.status}: ${errText}`;
+      return new Response(JSON.stringify({ error: msg }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
