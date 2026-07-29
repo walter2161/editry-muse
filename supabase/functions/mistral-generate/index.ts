@@ -183,8 +183,8 @@ Deno.serve(async (req) => {
       console.error('AI gateway error', resp.status, errText);
       const msg = resp.status === 429
         ? 'Limite de requisições atingido. Tente novamente em instantes.'
-        : resp.status === 402
-          ? 'Créditos de IA esgotados. Adicione créditos no workspace.'
+        : (resp.status === 402 || resp.status === 403)
+          ? 'Créditos de IA esgotados/limite do workspace atingido. Ajuste o limite ou adicione créditos.'
           : `IA ${resp.status}: ${errText}`;
       return new Response(JSON.stringify({ error: msg }), {
         status: 502,
