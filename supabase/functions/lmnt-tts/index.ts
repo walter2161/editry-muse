@@ -35,6 +35,28 @@ Deno.serve(async (req) => {
     // Truncar para evitar limites (LMNT aceita ~5000 chars)
     const safeText = text.length > 4500 ? text.slice(0, 4500) : text;
 
+    // Resolver nome de voz (ex.: "Walter" clonada) para o voice id real
+    let voiceId = voice;
+    try {
+      const voicesResp = await fetch('https://api.lmnt.com/v1/ai/voice/list', {
+        headers: { 'X-API-Key': LMNT_API_KEY },
+      });
+      if (voicesResp.ok) {
+        const raw = await voicesResp.json();
+        const list: any[] = Array.isArray(raw) ? raw : (raw.voices ?? []);
+        const match =
+          list.find((v) => String(v.id) === voice) ||
+          list.find((v) => String(v.name || '').toLowerCase() === voice.toLowerCase()) ||
+          list.find((v) => String(v.name || '').toLowerCase().includes(voice.toLowerCase()));
+        if (match?.id) voiceId = String(match.id);
+        console.log('Voz resolvida:', voice, '->', voiceId);
+      } else {
+        console.error('Falha ao listar vozes LMNT', voicesResp.status);
+      }
+    } catch (e) {
+      console.error('Erro ao resolver voz LMNT', e);
+    }
+
     const lmntResp = await fetch('https://api.lmnt.com/v1/ai/speech/bytes', {
       method: 'POST',
       headers: {
