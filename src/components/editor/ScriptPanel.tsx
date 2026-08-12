@@ -56,7 +56,7 @@ export const ScriptPanel = () => {
       const { data, error } = await supabase.functions.invoke('lmnt-tts', {
         body: {
           text: sourceText,
-          voice: 'lily',
+          voice: 'Walter',
           language: 'pt',
           model: 'blizzard',
           format: 'mp3',
