@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         text: safeText,
-        voice,
+        voice: voiceId,
         language,
         model,
         format,
